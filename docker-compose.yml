@@ -20,7 +20,23 @@ services:
     networks:
       - app-net
       - db-net
-
+  lunar-seed:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm run db:seed"
+    volumes:
+      - .:/app
+      - lunar_node_modules:/app/node_modules
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${LUNAR_DB_USER}:${LUNAR_DB_PASSWORD}@postgres:5432/${LUNAR_DB_NAME}
+    networks:
+      - db-net
+    restart: 'no'
+    profiles: ['tools']
+    
 volumes:
   lunar_node_modules:
 
