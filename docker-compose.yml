@@ -15,7 +15,7 @@ services:
       NODE_ENV: production
       PORT: '3000'
       HOSTNAME: '0.0.0.0'
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL wajib}
+      DATABASE_URL: postgresql://${LUNAR_DB_USER}:${LUNAR_DB_PASSWORD}@postgres:5432/${LUNAR_DB_NAME}
     networks:
       - app-net
       - db-net
@@ -29,7 +29,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL wajib}
+      DATABASE_URL: postgresql://${LUNAR_DB_USER}:${LUNAR_DB_PASSWORD}@postgres:5432/${LUNAR_DB_NAME}
     networks:
       - db-net
     restart: 'no'
