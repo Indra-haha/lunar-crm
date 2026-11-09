@@ -5,8 +5,10 @@ const envOrigins = process.env.ALLOWED_DEV_ORIGINS
   : [];
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  /* Izinkan host dev & HMR cross-origin */
   allowedDevOrigins: [
+    'lunar.deera-server.my.id',
+    '*.deera-server.my.id',
     'localhost',
     '*.localhost',
     '127.0.0.1',

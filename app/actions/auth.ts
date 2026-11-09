@@ -123,3 +123,13 @@ export async function logoutAdmin(): Promise<{ success: boolean }> {
 export async function getCurrentAdmin(): Promise<SessionPayload | null> {
   return await getSession();
 }
+
+/**
+ * Server Action directly callable from HTML form action attribute
+ */
+export async function loginAction(formData: FormData): Promise<LoginResult> {
+  const identifier = (formData.get('identifier') as string) || '';
+  const password = (formData.get('password') as string) || '';
+  const rememberMe = formData.get('rememberMe') === 'on' || formData.get('rememberMe') === 'true';
+  return await loginAdmin(identifier, password, rememberMe);
+}

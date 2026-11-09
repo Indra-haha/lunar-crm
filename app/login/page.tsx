@@ -37,35 +37,47 @@ function LoginForm() {
     setErrorMessage('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const executeLogin = (idVal: string, passVal: string, remVal: boolean) => {
     setErrorMessage('');
 
-    if (!identifier.trim()) {
+    if (!idVal.trim()) {
       setErrorMessage('Silakan masukkan email atau username admin.');
       return;
     }
-    if (!password.trim()) {
+    if (!passVal.trim()) {
       setErrorMessage('Silakan masukkan kata sandi Anda.');
       return;
     }
 
     startTransition(async () => {
       try {
-        const result = await loginAdmin(identifier, password, rememberMe);
+        const result = await loginAdmin(idVal, passVal, remVal);
         if (!result.success) {
           setErrorMessage(result.error || 'Autentikasi gagal.');
           return;
         }
 
         setIsSuccess(true);
-        router.push(redirectUrl);
-        router.refresh();
+        // Full navigation ensures the newly set lunar_session cookie is sent in HTTP headers
+        window.location.href = redirectUrl;
       } catch (err) {
-        console.error(err);
-        setErrorMessage('Terjadi gangguan jaringan. Coba beberapa saat lagi.');
+        console.error('Login error:', err);
+        setErrorMessage('Terjadi gangguan jaringan atau server. Coba beberapa saat lagi.');
       }
     });
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    executeLogin(identifier, password, rememberMe);
+  };
+
+  const handleFormAction = async (formData: FormData) => {
+    const idVal = (formData.get('identifier') as string) || identifier;
+    const passVal = (formData.get('password') as string) || password;
+    const remVal = formData.get('rememberMe') === 'on' || formData.get('rememberMe') === 'true' || rememberMe;
+    executeLogin(idVal, passVal, remVal);
   };
 
   return (
@@ -189,14 +201,16 @@ function LoginForm() {
               )}
 
               {/* Form */}
-              <form action="/login" method="post" onSubmit={handleSubmit} className="space-y-4">
+              <form action={handleFormAction} method="post" onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-text-primary mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-text-primary mb-1.5" htmlFor="identifier">
                     Email / Username
                   </label>
                   <div className="relative flex items-center">
                     <Mail className="w-4 h-4 text-slate-text-muted absolute left-3.5 pointer-events-none" />
                     <input
+                      id="identifier"
+                      name="identifier"
                       type="text"
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
@@ -210,7 +224,7 @@ function LoginForm() {
 
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-semibold text-slate-text-primary">
+                    <label className="block text-xs font-semibold text-slate-text-primary" htmlFor="password">
                       Kata Sandi
                     </label>
                     <span className="text-[11px] text-slate-text-muted">
@@ -220,6 +234,8 @@ function LoginForm() {
                   <div className="relative flex items-center">
                     <Lock className="w-4 h-4 text-slate-text-muted absolute left-3.5 pointer-events-none" />
                     <input
+                      id="password"
+                      name="password"
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -245,6 +261,8 @@ function LoginForm() {
                 <div className="flex items-center justify-between pt-1">
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input
+                      id="rememberMe"
+                      name="rememberMe"
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
@@ -277,7 +295,28 @@ function LoginForm() {
                 </button>
               </form>
 
-              
+              {/* Quick Demo Fill Buttons */}
+              <div className="mt-5 pt-4 border-t border-slate-border text-center">
+                <span className="text-[11px] font-semibold text-slate-text-muted block mb-2">
+                  Akun Demo Uji Coba:
+                </span>
+                <div className="flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDemoFill('admin@lunarchivve.com', 'admin123')}
+                    className="px-2.5 py-1 rounded-md bg-slate-surface border border-slate-border hover:bg-slate-card text-[11px] font-medium text-slate-text-secondary transition-all cursor-pointer"
+                  >
+                    Super Admin
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDemoFill('staff@lunarchivve.com', 'staff123')}
+                    className="px-2.5 py-1 rounded-md bg-slate-surface border border-slate-border hover:bg-slate-card text-[11px] font-medium text-slate-text-secondary transition-all cursor-pointer"
+                  >
+                    Studio Staff
+                  </button>
+                </div>
+              </div>
 
             </div>
           </div>
