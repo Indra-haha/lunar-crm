@@ -4,7 +4,7 @@ import LeadsClient from './LeadsClient';
 import { getLeads, getTemplates } from '@/app/actions/leads';
 import { getMessageAuditLogs } from '@/app/actions/messages';
 
-export const instant = false;
+export const dynamic = 'force-dynamic';
 
 export default async function LeadsPage() {
   await connection();

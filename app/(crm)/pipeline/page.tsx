@@ -4,7 +4,7 @@ import PipelineClient from './PipelineClient';
 import { getOrdersByStage } from '@/app/actions/orders';
 import { getCustomers } from '@/app/actions/customers';
 
-export const instant = false;
+export const dynamic = 'force-dynamic';
 
 export default async function PipelinePage() {
   await connection();

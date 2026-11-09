@@ -3,7 +3,7 @@ import { connection } from 'next/server';
 import PublicOrderClient from './PublicOrderClient';
 import { getActiveProductsForOrder } from '@/app/actions/products';
 
-export const instant = false;
+export const dynamic = 'force-dynamic';
 
 async function PublicOrderData() {
   await connection();

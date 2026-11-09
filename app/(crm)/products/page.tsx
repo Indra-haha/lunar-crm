@@ -3,7 +3,7 @@ import { connection } from 'next/server';
 import ProductsClient from './ProductsClient';
 import { getProducts } from '@/app/actions/products';
 
-export const instant = false;
+export const dynamic = 'force-dynamic';
 
 async function ProductsData() {
   await connection();

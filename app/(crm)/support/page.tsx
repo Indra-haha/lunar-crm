@@ -3,7 +3,7 @@ import { connection } from 'next/server';
 import SupportClient from './SupportClient';
 import { getTickets, getQAWorkbenchData } from '@/app/actions/support';
 
-export const instant = false;
+export const dynamic = 'force-dynamic';
 
 export default async function SupportPage() {
   await connection();

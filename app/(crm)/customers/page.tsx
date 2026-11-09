@@ -3,7 +3,7 @@ import { connection } from 'next/server';
 import CustomersClient from './CustomersClient';
 import { getCustomers } from '@/app/actions/customers';
 
-export const instant = false;
+export const dynamic = 'force-dynamic';
 
 export default async function CustomersPage() {
   await connection();

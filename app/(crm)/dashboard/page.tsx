@@ -3,7 +3,7 @@ import { connection } from 'next/server';
 import DashboardClient from './DashboardClient';
 import { getAnalyticsDashboardData } from '@/app/actions/analytics';
 
-export const instant = false;
+export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   await connection();
