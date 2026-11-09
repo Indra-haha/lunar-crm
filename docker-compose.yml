@@ -1,16 +1,10 @@
 services:
   lunar:
-    image: node:22-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: lunar
     restart: unless-stopped
-    working_dir: /app
-    command: sh -c "npm run dev -- --webpack -H 0.0.0.0 -p 3000"
-    stdin_open: true
-    tty: true
-    init: true
-    volumes:
-      - .:/app
-      - lunar_node_modules:/app/node_modules
     expose:
       - '3000'
     env_file:
@@ -26,8 +20,9 @@ services:
 
   lunar-seed:
     image: node:22-alpine
+    container_name: lunar-seed
     working_dir: /app
-    command: sh -c "npm run db:seed"
+    command: sh -c "npm install && npm run db:seed"
     volumes:
       - .:/app
       - lunar_node_modules:/app/node_modules
@@ -40,7 +35,7 @@ services:
       - db-net
     restart: 'no'
     profiles: ['tools']
-    
+
 volumes:
   lunar_node_modules:
 
