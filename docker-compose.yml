@@ -1,19 +1,44 @@
-lunar:
+services:
+  lunar:
     build:
-      context: ../lunar-crm
+      context: .
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
     container_name: lunar
     restart: unless-stopped
     expose:
       - '3000'
+    env_file:
+      - .env
     environment:
       NODE_ENV: production
       PORT: '3000'
       HOSTNAME: '0.0.0.0'
-      DATABASE_URL: postgresql://${LUNAR_DB_USER:-svc_lunar}:${LUNAR_DB_PASSWORD}@postgres:5432/${LUNAR_DB_NAME:-lunar_db}
-    depends_on:
-      postgres:
-        condition: service_healthy
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL wajib}
     networks:
       - app-net
       - db-net
+
+  lunar-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    command: ['npm', 'run', 'db:migrate']
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL wajib}
+    networks:
+      - db-net
+    restart: 'no'
+
+networks:
+  app-net:
+    external: true
+    name: server-tugas_app-net
+
+  db-net:
+    external: true
+    name: server-tugas_db-net
