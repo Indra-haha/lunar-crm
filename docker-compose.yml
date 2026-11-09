@@ -13,7 +13,7 @@ services:
     env_file:
       - .env
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: '3000'
       HOSTNAME: '0.0.0.0'
       DATABASE_URL: postgresql://${LUNAR_DB_USER}:${LUNAR_DB_PASSWORD}@postgres:5432/${LUNAR_DB_NAME}
@@ -21,19 +21,8 @@ services:
       - app-net
       - db-net
 
-  lunar-migrate:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: builder
-    command: ['npm', 'run', 'db:migrate']
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgresql://${LUNAR_DB_USER}:${LUNAR_DB_PASSWORD}@postgres:5432/${LUNAR_DB_NAME}
-    networks:
-      - db-net
-    restart: 'no'
+volumes:
+  lunar_node_modules:
 
 networks:
   app-net:
