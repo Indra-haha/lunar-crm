@@ -4,9 +4,10 @@ services:
     container_name: lunar
     restart: unless-stopped
     working_dir: /app
-    command: sh -c "npm run dev -- -H 0.0.0.0 -p 3000"
+    command: sh -c "npm run dev -- --webpack -H 0.0.0.0 -p 3000"
     stdin_open: true
     tty: true
+    init: true
     volumes:
       - .:/app
       - lunar_node_modules:/app/node_modules
