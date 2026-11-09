@@ -46,6 +46,43 @@ async function isValidSession(token: string | undefined): Promise<boolean> {
   }
 }
 
+/**
+ * Constructs a safe redirect URL that respects reverse proxies
+ * (x-forwarded-proto, x-forwarded-host, x-forwarded-port)
+ * so browser is never redirected to unroutable internal Docker hosts (e.g. http://0.0.0.0:3000 or http://lunar:3000)
+ */
+function createSafeRedirectUrl(pathname: string, request: NextRequest, searchParams?: Record<string, string>): URL {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+
+  if (searchParams) {
+    for (const [k, v] of Object.entries(searchParams)) {
+      url.searchParams.set(k, v);
+    }
+  }
+
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  if (forwardedProto) {
+    url.protocol = forwardedProto.endsWith(':') ? forwardedProto : `${forwardedProto}:`;
+  }
+
+  const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
+  if (forwardedHost) {
+    url.host = forwardedHost;
+  }
+
+  const forwardedPort = request.headers.get('x-forwarded-port');
+  if (forwardedPort && !forwardedHost?.includes(':')) {
+    if (forwardedPort === '80' || forwardedPort === '443') {
+      url.port = '';
+    } else {
+      url.port = forwardedPort;
+    }
+  }
+
+  return url;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
@@ -53,33 +90,30 @@ export async function proxy(request: NextRequest) {
 
   // If user is at root '/', route based on auth status
   if (pathname === '/') {
-    if (isAuth) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    } else {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
+    const target = isAuth ? '/dashboard' : '/login';
+    return NextResponse.redirect(createSafeRedirectUrl(target, request));
   }
 
   // Redirect aliases for complaint form
   if (pathname === '/complaint' || pathname === '/form-keluhan') {
-    return NextResponse.redirect(new URL('/komplain', request.url));
+    return NextResponse.redirect(createSafeRedirectUrl('/komplain', request));
   }
 
   // Redirect aliases for public pre-order form
   if (pathname === '/order' || pathname === '/preorder') {
-    return NextResponse.redirect(new URL('/pesan', request.url));
+    return NextResponse.redirect(createSafeRedirectUrl('/pesan', request));
   }
 
   // Redirect aliases for public CSAT survey form
   if (pathname === '/review' || pathname === '/feedback' || pathname === '/ulasan') {
-    return NextResponse.redirect(new URL('/survei', request.url));
+    return NextResponse.redirect(createSafeRedirectUrl('/survei', request));
   }
 
   // If user is accessing /login
   if (pathname === '/login') {
     if (isAuth) {
       // Already logged in, go to dashboard
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      return NextResponse.redirect(createSafeRedirectUrl('/dashboard', request));
     }
     // Allow login page access
     return NextResponse.next();
@@ -95,9 +129,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/products');
 
   if (isProtectedRoute && !isAuth) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(createSafeRedirectUrl('/login', request, { redirect: pathname }));
   }
 
   return NextResponse.next();
@@ -107,10 +139,11 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico, sitemap.xml, robots.txt (metadata files)
+     * - _next (Next.js internals: static assets, chunks, HMR WebSockets, image optimization)
+     * - api (API endpoints)
+     * - static files with extensions (e.g. .svg, .png, .jpg, .ico, .css, .js)
+     * - favicon.ico, sitemap.xml, robots.txt
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next|api|favicon.ico|sitemap.xml|robots.txt|.*\\.[\\w]+$).*)',
   ],
 };

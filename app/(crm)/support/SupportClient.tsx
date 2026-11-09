@@ -904,7 +904,7 @@ export default function SupportClient({ initialTickets, qaOrders }: SupportClien
               </button>
             </div>
 
-            <form onSubmit={handleCreateTicketSubmit} className="p-5 flex flex-col gap-4">
+            <form action="/support" method="post" onSubmit={handleCreateTicketSubmit} className="p-5 flex flex-col gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-text-primary block mb-1">
                   Pilih Pesanan Terkait *

@@ -1055,7 +1055,7 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
               </button>
             </div>
 
-            <form onSubmit={handleAddCustomerSubmit} className="p-5 flex flex-col gap-4">
+            <form action="/customers" method="post" onSubmit={handleAddCustomerSubmit} className="p-5 flex flex-col gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-text-primary block mb-1">
                   Nama Lengkap *
@@ -1220,7 +1220,7 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
               </button>
             </div>
 
-            <form onSubmit={handleEditCustomerSubmit} className="p-5 flex flex-col gap-4">
+            <form action="/customers" method="post" onSubmit={handleEditCustomerSubmit} className="p-5 flex flex-col gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-text-primary block mb-1">
                   Nama Lengkap *
@@ -1371,7 +1371,7 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
               </button>
             </div>
 
-            <form onSubmit={handleCreateOrderFromDrawer} className="p-5 flex flex-col gap-4">
+            <form action="/customers" method="post" onSubmit={handleCreateOrderFromDrawer} className="p-5 flex flex-col gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-text-primary block mb-1">
                   Nama Produk Merchandise *

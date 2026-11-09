@@ -737,7 +737,7 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
               </button>
             </div>
 
-            <form onSubmit={handleCreateOrderSubmit} className="p-5 flex flex-col gap-4">
+            <form action="/pipeline" method="post" onSubmit={handleCreateOrderSubmit} className="p-5 flex flex-col gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-text-primary block mb-1">
                   Pilih Pelanggan Terdaftar *

@@ -642,7 +642,7 @@ function ComplaintPublicPortal() {
               </div>
             )}
 
-            <form onSubmit={handleSubmitComplaint} className="space-y-8">
+            <form action="/komplain" method="post" onSubmit={handleSubmitComplaint} className="space-y-8">
               {/* SECTION 1: Identifikasi Pesanan */}
               <div>
                 <div className="flex items-center gap-2 mb-3">

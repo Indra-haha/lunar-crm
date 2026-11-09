@@ -302,7 +302,7 @@ export default function PublicOrderClient({ products }: PublicOrderClientProps) 
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form action="/pesan" method="post" onSubmit={handleSubmit} className="space-y-8">
               {/* SECTION 1: Data Identitas Pemesan */}
               <div>
                 <div className="flex items-center gap-2 mb-3">

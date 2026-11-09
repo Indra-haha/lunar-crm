@@ -292,7 +292,7 @@ function SurveyContent() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form action="/survei" method="post" onSubmit={handleSubmit} className="space-y-8">
               {/* SECTION 1: Cek Pesanan */}
               <div>
                 <label className="block text-xs font-semibold text-slate-text-primary mb-1.5">

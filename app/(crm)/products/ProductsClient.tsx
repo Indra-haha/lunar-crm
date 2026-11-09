@@ -507,7 +507,7 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
             </div>
 
             {/* Modal Body Form */}
-            <form onSubmit={handleFormSubmit} className="p-6 overflow-y-auto flex flex-col gap-4 text-xs">
+            <form action="/products" method="post" onSubmit={handleFormSubmit} className="p-6 overflow-y-auto flex flex-col gap-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-text-primary mb-1">

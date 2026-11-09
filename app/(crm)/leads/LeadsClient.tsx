@@ -804,7 +804,7 @@ export default function LeadsClient({
               </button>
             </div>
 
-            <form onSubmit={handleConvertSubmit} className="p-5 flex flex-col gap-4">
+            <form action="/leads" method="post" onSubmit={handleConvertSubmit} className="p-5 flex flex-col gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-text-primary block mb-1">
                   Nama Produk Kustom *
@@ -936,7 +936,7 @@ export default function LeadsClient({
               </button>
             </div>
 
-            <form onSubmit={handleCreateTemplateSubmit} className="p-5 flex flex-col gap-4">
+            <form action="/leads" method="post" onSubmit={handleCreateTemplateSubmit} className="p-5 flex flex-col gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-text-primary block mb-1">
                   Judul Template *
