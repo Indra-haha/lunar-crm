@@ -1,0 +1,19 @@
+lunar:
+    build:
+      context: ../lunar-crm
+      dockerfile: Dockerfile
+    container_name: lunar
+    restart: unless-stopped
+    expose:
+      - '3000'
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      HOSTNAME: '0.0.0.0'
+      DATABASE_URL: postgresql://${LUNAR_DB_USER:-svc_lunar}:${LUNAR_DB_PASSWORD}@postgres:5432/${LUNAR_DB_NAME:-lunar_db}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-net
+      - db-net
