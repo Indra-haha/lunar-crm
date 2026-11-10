@@ -19,7 +19,7 @@ services:
       - db-net
 
   lunar-seed:
-    image: node:22-alpine
+    image: node:22-slim
     container_name: lunar-seed
     working_dir: /app
     command: sh -c "npm install && npm run db:seed"

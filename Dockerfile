@@ -1,12 +1,14 @@
-FROM node:22-alpine AS base
+FROM node:22-slim AS base
+WORKDIR /app
 
 # Step 1: Install dependencies
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm ci || npm install
+# Explicitly pre-install native Linux SWC binary so next build never downloads over network
+RUN npm install --no-save @next/swc-linux-x64-gnu@16.4.5
 
 # Step 2: Build the Next.js app
 FROM base AS builder
@@ -27,8 +29,8 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
 
