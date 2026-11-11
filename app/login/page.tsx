@@ -21,7 +21,11 @@ import { loginAdmin } from '@/app/actions/auth';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get('redirect') || '/dashboard';
+  const rawRedirect = searchParams.get('redirect') || '/dashboard';
+  const redirectUrl =
+    rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+      ? rawRedirect
+      : '/dashboard';
 
   const [identifier, setIdentifier] = useState('admin@lunarchivve.com');
   const [password, setPassword] = useState('admin123');

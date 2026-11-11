@@ -48,12 +48,13 @@ async function isValidSession(token: string | undefined): Promise<boolean> {
 
 /**
  * Constructs a safe redirect URL that respects reverse proxies
- * (x-forwarded-proto, x-forwarded-host, x-forwarded-port)
- * so browser is never redirected to unroutable internal Docker hosts (e.g. http://0.0.0.0:3000 or http://lunar:3000)
+ * (x-forwarded-proto, x-forwarded-host, host, x-forwarded-port)
+ * so browser is never redirected to unroutable internal Docker hosts/ports (e.g. http://0.0.0.0:3000 or :3000 on public domains)
  */
 function createSafeRedirectUrl(pathname: string, request: NextRequest, searchParams?: Record<string, string>): URL {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
+  url.search = '';
 
   if (searchParams) {
     for (const [k, v] of Object.entries(searchParams)) {
@@ -61,22 +62,45 @@ function createSafeRedirectUrl(pathname: string, request: NextRequest, searchPar
     }
   }
 
-  const forwardedProto = request.headers.get('x-forwarded-proto');
+  // 1. Resolve Protocol
+  const forwardedProto = (request.headers.get('x-forwarded-proto') || '').split(',')[0].trim();
   if (forwardedProto) {
     url.protocol = forwardedProto.endsWith(':') ? forwardedProto : `${forwardedProto}:`;
   }
 
-  const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
-  if (forwardedHost) {
-    url.host = forwardedHost;
-  }
+  // 2. Resolve Host & Port
+  const hostHeader = (
+    request.headers.get('x-forwarded-host') ||
+    request.headers.get('host') ||
+    ''
+  ).split(',')[0].trim();
 
-  const forwardedPort = request.headers.get('x-forwarded-port');
-  if (forwardedPort && !forwardedHost?.includes(':')) {
-    if (forwardedPort === '80' || forwardedPort === '443') {
+  const forwardedPort = (request.headers.get('x-forwarded-port') || '').split(',')[0].trim();
+
+  if (hostHeader) {
+    try {
+      // Parse hostHeader to cleanly separate hostname and port if present
+      const parsed = new URL(`http://${hostHeader}`);
+      url.hostname = parsed.hostname;
+
+      if (forwardedPort) {
+        url.port = forwardedPort === '80' || forwardedPort === '443' ? '' : forwardedPort;
+      } else if (parsed.port) {
+        url.port = parsed.port === '80' || parsed.port === '443' ? '' : parsed.port;
+      } else {
+        // No explicit port provided in hostHeader or x-forwarded-port.
+        // Clear internal container port (e.g. 3000) so public redirects use standard 80/443.
+        url.port = '';
+      }
+    } catch {
+      url.host = hostHeader;
+      if (!forwardedPort && !hostHeader.includes(':')) {
+        url.port = '';
+      }
+    }
+  } else {
+    if (url.protocol === 'https:' && url.port === '3000') {
       url.port = '';
-    } else {
-      url.port = forwardedPort;
     }
   }
 
@@ -129,7 +153,10 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/products');
 
   if (isProtectedRoute && !isAuth) {
-    return NextResponse.redirect(createSafeRedirectUrl('/login', request, { redirect: pathname }));
+    const redirectTarget = request.nextUrl.search
+      ? `${pathname}${request.nextUrl.search}`
+      : pathname;
+    return NextResponse.redirect(createSafeRedirectUrl('/login', request, { redirect: redirectTarget }));
   }
 
   return NextResponse.next();
