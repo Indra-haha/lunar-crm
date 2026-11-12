@@ -5,6 +5,14 @@ export const metadata: Metadata = {
   title: 'Lunarchivve CRM — Merch & Studio Pre-Order',
   description:
     'Sistem Manajemen Hubungan Pelanggan (CRM) Database-Driven untuk Pre-Order Merchandise & Studio Desain Kustom (Patuh UU No. 27/2022 PDP)',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    shortcut: '/icon.svg',
+    apple: '/apple-icon.png',
+  },
 };
 
 export default function RootLayout({

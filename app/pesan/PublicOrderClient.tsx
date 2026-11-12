@@ -141,9 +141,14 @@ export default function PublicOrderClient({ products }: PublicOrderClientProps) 
       <header className="w-full bg-slate-card border-b border-slate-border sticky top-0 z-30 shadow-xs">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary-container flex items-center justify-center text-white shadow-sm shadow-primary/20">
-              <Sparkles className="w-5 h-5 text-on-primary" />
-            </div>
+            <Image
+              src="/icon.svg"
+              alt="Lunarchivve"
+              width={36}
+              height={36}
+              className="w-9 h-9 rounded-xl shadow-sm shadow-primary/20 object-contain"
+              priority
+            />
             <div className="flex flex-col">
               <span className="font-title-sm text-[15px] font-bold text-slate-text-primary tracking-tight">
                 Lunarchivve

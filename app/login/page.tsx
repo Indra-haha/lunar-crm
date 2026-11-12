@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useTransition, Suspense } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Sparkles,
@@ -89,9 +90,14 @@ function LoginForm() {
       {/* Top Header */}
       <header className="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary-container flex items-center justify-center text-white shadow-sm shadow-primary/20">
-            <Sparkles className="w-5 h-5 text-on-primary" />
-          </div>
+          <Image
+            src="/icon.svg"
+            alt="Lunarchivve"
+            width={36}
+            height={36}
+            className="w-9 h-9 rounded-xl shadow-sm shadow-primary/20 object-contain"
+            priority
+          />
           <div className="flex flex-col">
             <span className="font-title-sm text-[15px] font-bold text-slate-text-primary tracking-tight">
               Lunarchivve
