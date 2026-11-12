@@ -26,14 +26,7 @@ import {
   Edit2,
   PlusCircle,
 } from 'lucide-react';
-import {
-  CustomerListItem,
-  createCustomer,
-  updateCustomer,
-  deleteCustomer,
-  getCustomerDetail,
-} from '@/app/actions/customers';
-import { createOrder } from '@/app/actions/orders';
+import type { CustomerListItem } from '@/app/actions/customers';
 import { formatRupiah, formatRelativeTime } from '@/lib/formatters';
 
 interface CustomersClientProps {
@@ -146,7 +139,8 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
     setDrawerOpen(true);
     setLoadingDetail(true);
     try {
-      const data = await getCustomerDetail(id);
+      const res = await fetch(`/api/customers/${id}`);
+      const data = await res.json();
       setDetailData(data as unknown as CustomerDetailData);
     } catch (err) {
       console.error(err);
@@ -248,9 +242,18 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
 
     startTransition(async () => {
       try {
-        const newCust = await createCustomer(formData);
+        const res = await fetch('/api/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
+        const newCust = await res.json();
+        if (!res.ok || newCust.error) {
+          throw new Error(newCust.error || 'Gagal menambah pelanggan.');
+        }
+
         const item: CustomerListItem = {
-          id: newCust._id,
+          id: newCust._id || newCust.id,
           customerId: newCust.customerId,
           fullName: newCust.fullName,
           socialHandle: newCust.socialHandle,
@@ -277,7 +280,7 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
           acceptsMarketing: true,
           city: 'Jakarta',
         });
-        loadDetail(newCust._id);
+        loadDetail(newCust._id || newCust.id);
       } catch (err) {
         alert('Gagal menambah pelanggan: ' + err);
       }
@@ -297,15 +300,23 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
 
     startTransition(async () => {
       try {
-        await updateCustomer(editingCustomer.id, {
-          fullName: editingCustomer.fullName,
-          socialHandle: editingCustomer.socialHandle,
-          phone: editingCustomer.rawPhone,
-          acquisitionChannel: editingCustomer.acquisitionChannel,
-          segment: editingCustomer.segment,
-          city: editingCustomer.city,
-          acceptsMarketing: editingCustomer.acceptsMarketing,
+        const res = await fetch(`/api/customers/${editingCustomer.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fullName: editingCustomer.fullName,
+            socialHandle: editingCustomer.socialHandle,
+            phone: editingCustomer.rawPhone,
+            acquisitionChannel: editingCustomer.acquisitionChannel,
+            segment: editingCustomer.segment,
+            city: editingCustomer.city,
+            acceptsMarketing: editingCustomer.acceptsMarketing,
+          }),
         });
+        const updated = await res.json();
+        if (!res.ok || updated.error) {
+          throw new Error(updated.error || 'Gagal memperbarui pelanggan.');
+        }
 
         setCustomers((prev) =>
           prev.map((c) => (c.id === editingCustomer.id ? editingCustomer : c))
@@ -330,15 +341,23 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
 
     startTransition(async () => {
       try {
-        await createOrder({
-          customerId: detailData.customer.id,
-          productName: orderDrawerForm.productName,
-          variantName: orderDrawerForm.variantName,
-          quantity: orderDrawerForm.quantity,
-          totalPrice: orderDrawerForm.totalPrice,
-          briefNotes: orderDrawerForm.briefNotes,
-          paymentStatus: 'LUNAS',
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerId: detailData.customer.id,
+            productName: orderDrawerForm.productName,
+            variantName: orderDrawerForm.variantName,
+            quantity: orderDrawerForm.quantity,
+            totalPrice: orderDrawerForm.totalPrice,
+            briefNotes: orderDrawerForm.briefNotes,
+            paymentStatus: 'LUNAS',
+          }),
         });
+        const createdOrder = await res.json();
+        if (!res.ok || createdOrder.error) {
+          throw new Error(createdOrder.error || 'Gagal membuat pesanan.');
+        }
 
         setIsAddOrderDrawerOpen(false);
         loadDetail(detailData.customer.id);
@@ -363,8 +382,12 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
         : null
     );
 
-    await updateCustomer(detailData.customer.id, {
-      acceptsMarketing: nextVal,
+    await fetch(`/api/customers/${detailData.customer.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        acceptsMarketing: nextVal,
+      }),
     });
 
     setCustomers((prev) =>
@@ -377,7 +400,7 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
   // Delete customer
   const handleDeleteCustomer = async (id: string, name: string) => {
     if (!confirm(`Hapus pelanggan ${name}? Seluruh data terkait akan dihapus.`)) return;
-    await deleteCustomer(id);
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
     setCustomers((prev) => prev.filter((c) => c.id !== id));
     if (selectedCustomerId === id) {
       const remaining = customers.filter((c) => c.id !== id);
@@ -1039,7 +1062,7 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
                   className="flex-1 py-2 px-3 rounded-lg bg-primary-container hover:bg-secondary text-white text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <PlusCircle className="w-3.5 h-3.5 text-white" />
-                  <span>+ Pesanan Batch #12</span>
+                  <span>Pesanan Batch #12</span>
                 </button>
               </div>
             </div>
