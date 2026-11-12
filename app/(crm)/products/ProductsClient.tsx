@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   Package,
   Plus,
@@ -29,6 +31,7 @@ interface ProductsClientProps {
 }
 
 export default function ProductsClient({ initialProducts }: ProductsClientProps) {
+  const router = useRouter();
   const [products, setProducts] = useState<ProductItem[]>(initialProducts);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -50,6 +53,25 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
     variants: [{ name: 'Standar', additionalPrice: 0, stockOrQuota: 100 }],
   });
 
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      category: 'AKRILIK',
+      basePrice: 50000,
+      vendorName: 'Maklon Akrilik Subur',
+      batchAvailable: 'Batch #12 Open',
+      imageUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=400&auto=format&fit=crop&q=80',
+      description: '',
+      variants: [{ name: 'Standar', additionalPrice: 0, stockOrQuota: 100 }],
+    });
+    setEditingProduct(null);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    resetForm();
+  };
+
   const [isPending, startTransition] = useTransition();
 
   // Filtered Products
@@ -64,17 +86,7 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
 
   // Open Create Modal
   const handleOpenCreate = () => {
-    setEditingProduct(null);
-    setFormData({
-      name: '',
-      category: 'AKRILIK',
-      basePrice: 50000,
-      vendorName: 'Maklon Akrilik Subur',
-      batchAvailable: 'Batch #12 Open',
-      imageUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=400&auto=format&fit=crop&q=80',
-      description: '',
-      variants: [{ name: 'Standar', additionalPrice: 0, stockOrQuota: 100 }],
-    });
+    resetForm();
     setIsModalOpen(true);
   };
 
@@ -124,7 +136,10 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
     startTransition(async () => {
       try {
         if (editingProduct) {
-          await updateProduct(editingProduct.id, formData);
+          const res = await updateProduct(editingProduct.id, formData);
+          if (!res.success) {
+            throw new Error('Gagal memperbarui produk.');
+          }
           setProducts((prev) =>
             prev.map((p) =>
               p.id === editingProduct.id
@@ -155,12 +170,21 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
             };
             setProducts([newCreated, ...products]);
             setNotification({ type: 'success', text: `Produk baru ${formData.name} (${res.product.productCode}) berhasil ditambahkan.` });
+          } else {
+            throw new Error('Gagal menambahkan produk baru.');
           }
         }
+        // Reset form & turn modal off
+        resetForm();
         setIsModalOpen(false);
+
+        // Arahkan ke /products
+        router.push('/products');
+        router.refresh();
       } catch (err) {
         console.error(err);
-        setNotification({ type: 'error', text: 'Gagal menyimpan produk. Coba lagi.' });
+        const errMsg = err instanceof Error ? err.message : 'Gagal menyimpan produk. Coba lagi.';
+        setNotification({ type: 'error', text: errMsg });
       }
     });
   };
@@ -188,9 +212,9 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
         {/* Breadcrumb */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-slate-text-muted text-xs">
-            <span className="hover:text-slate-text-primary transition-colors cursor-pointer">
+            <Link href="/dashboard" className="hover:text-slate-text-primary transition-colors cursor-pointer">
               CRM
-            </span>
+            </Link>
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-slate-text-primary font-semibold">
               Master Produk &amp; Varian Merchandise
@@ -200,14 +224,25 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={handleOpenCreate}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-container hover:bg-secondary text-white rounded-lg text-xs font-bold shadow-xs transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Tambah Produk Baru</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/pesan"
+              target="_blank"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-card hover:bg-slate-surface text-slate-text-primary rounded-lg text-xs font-semibold border border-slate-border shadow-xs transition-all cursor-pointer"
+              title="Buka form pemesanan merchandise publik di tab baru"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-slate-text-secondary" />
+              <span>Form Pemesanan (/pesan)</span>
+            </Link>
+            <button
+              type="button"
+              onClick={handleOpenCreate}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-container hover:bg-secondary text-white rounded-lg text-xs font-bold shadow-xs transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tambah Produk Baru</span>
+            </button>
+          </div>
         </div>
 
         {/* Title */}
@@ -499,7 +534,7 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
               </div>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={handleCloseModal}
                 className="text-slate-text-muted hover:text-slate-text-primary cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -687,7 +722,7 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
               <div className="pt-4 border-t border-slate-border flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={handleCloseModal}
                   className="px-4 py-2 border border-slate-border rounded-lg text-slate-text-secondary hover:text-slate-text-primary text-xs font-bold cursor-pointer"
                 >
                   Batal
