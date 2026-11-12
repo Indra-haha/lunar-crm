@@ -49,58 +49,32 @@ async function isValidSession(token: string | undefined): Promise<boolean> {
 /**
  * Constructs a safe redirect URL that respects reverse proxies
  * (x-forwarded-proto, x-forwarded-host, host, x-forwarded-port)
- * so browser is never redirected to unroutable internal Docker hosts/ports (e.g. http://0.0.0.0:3000 or :3000 on public domains)
+ * so browser is never redirected to unroutable internal Docker hosts/ports (e.g. :3000 on public domains)
  */
 function createSafeRedirectUrl(pathname: string, request: NextRequest, searchParams?: Record<string, string>): URL {
-  const url = request.nextUrl.clone();
-  url.pathname = pathname;
-  url.search = '';
+  const forwardedProto = (request.headers.get('x-forwarded-proto') || '').split(',')[0].trim();
+  const protocol = forwardedProto
+    ? (forwardedProto.endsWith(':') ? forwardedProto : `${forwardedProto}:`)
+    : request.nextUrl.protocol;
+
+  const hostHeader = (
+    request.headers.get('x-forwarded-host') ||
+    request.headers.get('host') ||
+    request.nextUrl.host ||
+    'localhost'
+  ).split(',')[0].trim();
+
+  let safeHost = hostHeader;
+  // If host is a public domain (not localhost/127.0.0.1), strip internal container port :3000
+  if (!safeHost.startsWith('localhost') && !safeHost.startsWith('127.0.0.1')) {
+    safeHost = safeHost.replace(/:3000$/, '');
+  }
+
+  const url = new URL(pathname, `${protocol}//${safeHost}`);
 
   if (searchParams) {
     for (const [k, v] of Object.entries(searchParams)) {
       url.searchParams.set(k, v);
-    }
-  }
-
-  // 1. Resolve Protocol
-  const forwardedProto = (request.headers.get('x-forwarded-proto') || '').split(',')[0].trim();
-  if (forwardedProto) {
-    url.protocol = forwardedProto.endsWith(':') ? forwardedProto : `${forwardedProto}:`;
-  }
-
-  // 2. Resolve Host & Port
-  const hostHeader = (
-    request.headers.get('x-forwarded-host') ||
-    request.headers.get('host') ||
-    ''
-  ).split(',')[0].trim();
-
-  const forwardedPort = (request.headers.get('x-forwarded-port') || '').split(',')[0].trim();
-
-  if (hostHeader) {
-    try {
-      // Parse hostHeader to cleanly separate hostname and port if present
-      const parsed = new URL(`http://${hostHeader}`);
-      url.hostname = parsed.hostname;
-
-      if (forwardedPort) {
-        url.port = forwardedPort === '80' || forwardedPort === '443' ? '' : forwardedPort;
-      } else if (parsed.port) {
-        url.port = parsed.port === '80' || parsed.port === '443' ? '' : parsed.port;
-      } else {
-        // No explicit port provided in hostHeader or x-forwarded-port.
-        // Clear internal container port (e.g. 3000) so public redirects use standard 80/443.
-        url.port = '';
-      }
-    } catch {
-      url.host = hostHeader;
-      if (!forwardedPort && !hostHeader.includes(':')) {
-        url.port = '';
-      }
-    }
-  } else {
-    if (url.protocol === 'https:' && url.port === '3000') {
-      url.port = '';
     }
   }
 
