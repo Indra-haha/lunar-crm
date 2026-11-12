@@ -22,8 +22,7 @@ import {
   UploadCloud,
 } from 'lucide-react';
 import Image from 'next/image';
-import { ProductItem } from '@/app/actions/products';
-import { submitPublicOrder } from '@/app/actions/orders';
+import type { ProductItem } from '@/app/actions/products';
 import { formatRupiah } from '@/lib/formatters';
 
 interface PublicOrderClientProps {
@@ -95,24 +94,40 @@ export default function PublicOrderClient({ products }: PublicOrderClientProps) 
 
     startSubmit(async () => {
       try {
-        const result = await submitPublicOrder({
-          fullName,
-          phone,
-          socialHandle,
-          city,
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            isPublic: true,
+            customerName: fullName,
+            customerPhone: phone,
+            socialHandle,
+            city,
+            productName: selectedProduct.name,
+            variantName: selectedVariant?.name || 'Standar',
+            quantity,
+            totalPrice,
+            briefNotes,
+            designUrl,
+            paymentStatus: paymentPlan === 'LUNAS_100' ? 'LUNAS' : 'PENDING_DP',
+            batchName: selectedProduct.batchAvailable,
+          }),
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Gagal mengirim pesanan.');
+        }
+
+        setSubmittedOrder({
+          orderCode: result.orderCode,
           productName: selectedProduct.name,
           variantName: selectedVariant?.name || 'Standar',
           quantity,
           totalPrice,
-          briefNotes,
-          designUrl,
-          paymentPlan,
-          batchName: selectedProduct.batchAvailable,
+          paymentStatus: paymentPlan === 'LUNAS_100' ? 'Lunas 100%' : 'DP 50%',
+          customerName: fullName,
         });
-
-        if (result.success) {
-          setSubmittedOrder(result);
-        }
       } catch (err: unknown) {
         console.error(err);
         setErrorMessage((err as Error).message || 'Terjadi kesalahan saat memproses pesanan.');

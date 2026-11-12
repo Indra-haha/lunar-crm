@@ -23,11 +23,6 @@ import {
   Phone,
   CheckCircle,
 } from 'lucide-react';
-import {
-  lookupOrderForComplaint,
-  submitPublicComplaint,
-  lookupPublicTicket,
-} from '@/app/actions/support';
 import type { TicketCategory } from '@/models/SupportTicket';
 
 interface VerifiedOrder {
@@ -100,8 +95,9 @@ function ComplaintPublicPortal() {
     setLookupMessage(null);
     startLookup(async () => {
       try {
-        const res = await lookupOrderForComplaint(orderQuery);
-        if (res.found && res.order) {
+        const response = await fetch(`/api/feedback?orderCode=${encodeURIComponent(orderQuery.trim())}`);
+        const res = await response.json();
+        if (response.ok && res.success && res.order) {
           setVerifiedOrder(res.order);
           setCustomerName(res.order.customerName);
           setLookupMessage({
@@ -112,7 +108,7 @@ function ComplaintPublicPortal() {
           setVerifiedOrder(null);
           setLookupMessage({
             type: 'error',
-            text: 'Pesanan tidak ditemukan di database. Anda tetap dapat melanjutkan pengisian form secara manual.',
+            text: res.error || 'Pesanan tidak ditemukan di database. Anda tetap dapat melanjutkan pengisian form secara manual.',
           });
         }
       } catch (err) {
@@ -139,24 +135,32 @@ function ComplaintPublicPortal() {
 
     startSubmit(async () => {
       try {
-        const result = await submitPublicComplaint({
-          orderCode: verifiedOrder ? verifiedOrder.orderCode : orderQuery.trim() || 'LOOKUP-PELANGGAN',
-          orderId: verifiedOrder?.id,
-          customerName: customerName.trim(),
-          phone: phone.trim(),
-          category,
-          issueDetail,
-          photoProofUrl,
-          expectedResolution,
+        const response = await fetch('/api/support', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'submit_complaint',
+            orderCode: verifiedOrder ? verifiedOrder.orderCode : orderQuery.trim() || 'LOOKUP-PELANGGAN',
+            orderId: verifiedOrder?.id,
+            customerName: customerName.trim(),
+            phone: phone.trim(),
+            category,
+            issueDetail,
+            evidencePhotoUrl: photoProofUrl,
+            expectedResolution,
+          }),
         });
 
-        if (result.success) {
-          setTicketResult({
-            ticketCode: result.ticketCode,
-            createdAt: result.createdAt,
-            assignedPIC: result.assignedPIC,
-          });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Gagal mengirimkan tiket keluhan.');
         }
+
+        setTicketResult({
+          ticketCode: result.ticketCode,
+          createdAt: new Date().toISOString(),
+          assignedPIC: 'Nadia Putri',
+        });
       } catch (err: unknown) {
         console.error(err);
         setSubmitError((err as Error).message || 'Gagal mengirimkan tiket keluhan. Coba beberapa saat lagi.');
@@ -174,15 +178,16 @@ function ComplaintPublicPortal() {
     setTrackMessage(null);
     startTrack(async () => {
       try {
-        const res = await lookupPublicTicket(trackQuery);
-        if (res.found && res.ticket) {
-          setTrackedTicket(res.ticket as TrackedTicket);
-          setTrackMessage({ type: 'success', text: `Tiket ${res.ticket.ticketCode} ditemukan!` });
+        const response = await fetch(`/api/support/${encodeURIComponent(trackQuery.trim())}`);
+        const res = await response.json();
+        if (response.ok && res.id) {
+          setTrackedTicket(res as TrackedTicket);
+          setTrackMessage({ type: 'success', text: `Tiket ${res.ticketCode} ditemukan!` });
         } else {
           setTrackedTicket(null);
           setTrackMessage({
             type: 'error',
-            text: `Tiket dengan kode "${trackQuery}" tidak ditemukan. Pastikan format penulisan benar.`,
+            text: res.error || `Tiket dengan kode "${trackQuery}" tidak ditemukan. Pastikan format penulisan benar.`,
           });
         }
       } catch (err) {

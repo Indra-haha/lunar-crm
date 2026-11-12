@@ -1,13 +1,15 @@
 import React, { Suspense } from 'react';
 import { connection } from 'next/server';
 import PublicOrderClient from './PublicOrderClient';
-import { getActiveProductsForOrder } from '@/app/actions/products';
+import { GET as getProductsRoute } from '@/app/api/products/route';
 
 export const dynamic = 'force-dynamic';
 
 async function PublicOrderData() {
   await connection();
-  const products = await getActiveProductsForOrder();
+  const req = new Request('http://localhost/api/products?active=true');
+  const res = await getProductsRoute(req);
+  const products = await res.json();
   return <PublicOrderClient products={products} />;
 }
 

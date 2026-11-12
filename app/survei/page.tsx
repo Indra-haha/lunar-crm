@@ -21,7 +21,7 @@ import {
   ThumbsUp,
   Heart,
 } from 'lucide-react';
-import { lookupOrderForSurvey, submitPublicFeedback } from '@/app/actions/feedback';
+// Feedback actions moved to /api/feedback route handler
 
 interface VerifiedSurveyOrder {
   id: string;
@@ -77,8 +77,9 @@ function SurveyContent() {
     setLookupMessage(null);
     startLookup(async () => {
       try {
-        const res = await lookupOrderForSurvey(orderQuery);
-        if (res.found && res.order) {
+        const response = await fetch(`/api/feedback?orderCode=${encodeURIComponent(orderQuery.trim())}`);
+        const res = await response.json();
+        if (response.ok && res.success && res.order) {
           setVerifiedOrder(res.order);
           setLookupMessage({
             type: 'success',
@@ -88,7 +89,7 @@ function SurveyContent() {
           setVerifiedOrder(null);
           setLookupMessage({
             type: 'error',
-            text: 'Pesanan tidak ditemukan. Anda tetap dapat melanjutkan pengisian ulasan secara umum.',
+            text: res.error || 'Pesanan tidak ditemukan. Anda tetap dapat melanjutkan pengisian ulasan secara umum.',
           });
         }
       } catch (err) {
@@ -109,26 +110,30 @@ function SurveyContent() {
 
     startSubmit(async () => {
       try {
-        const res = await submitPublicFeedback({
-          orderCode: verifiedOrder ? verifiedOrder.orderCode : orderQuery.trim() || 'SURVEI-UMUM',
-          orderId: verifiedOrder?.id,
-          rating,
-          comment,
-          allowSocialPin,
-          aspectRatings: {
-            quality: qualityRating,
-            speed: speedRating,
-            service: serviceRating,
-          },
+        const response = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: verifiedOrder?.id,
+            rating,
+            comment,
+            allowSocialShare: allowSocialPin,
+            aspectQuality: qualityRating,
+            aspectSpeed: speedRating,
+            aspectService: serviceRating,
+          }),
         });
 
-        if (res.success) {
-          setSubmittedVoucher({
-            customerName: res.customerName,
-            voucherCode: res.voucherCode,
-            rating: res.rating,
-          });
+        const res = await response.json();
+        if (!response.ok || !res.success) {
+          throw new Error(res.error || 'Gagal mengirimkan survei.');
         }
+
+        setSubmittedVoucher({
+          customerName: verifiedOrder?.customerName || 'Pelanggan Setia',
+          voucherCode: res.couponCode || 'LUNARLOYAL15',
+          rating,
+        });
       } catch (err: unknown) {
         console.error(err);
         setErrorMessage((err as Error).message || 'Gagal mengirimkan survei.');
