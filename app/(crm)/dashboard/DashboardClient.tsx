@@ -20,14 +20,12 @@ import {
   HelpCircle,
   Check,
   Zap,
+  Calendar,
 } from 'lucide-react';
-import {
+import type {
   KPIMetrics,
   FeedbackItem,
-  togglePinFeedback,
-  sendPromoToDormant,
 } from '@/app/actions/analytics';
-import { schedulePromoBroadcast } from '@/app/actions/messages';
 import { formatRelativeTime } from '@/lib/formatters';
 
 interface DashboardClientProps {
@@ -61,7 +59,14 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
     startTransition(async () => {
       try {
-        await togglePinFeedback(feedbackId);
+        const response = await fetch('/api/dashboard', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'toggle_pin', feedbackId }),
+        });
+        if (!response.ok) {
+          throw new Error('Gagal toggle pin di server.');
+        }
       } catch (err) {
         alert('Gagal toggle pin: ' + err);
       }
@@ -70,18 +75,30 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
   // Send Promo to Dormant Customers (TOWS S-T S1+T1)
   const [scheduleOption, setScheduleOption] = useState<'IMMEDIATE' | 'BATCH_NEXT' | 'CUSTOM'>('IMMEDIATE');
+  const [scheduledDate, setScheduledDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 3);
+    return d.toISOString().split('T')[0];
+  });
   const [promoTemplate, setPromoTemplate] = useState('Halo {nama}! Khusus kamu pelanggan setia Lunarchivve, dapatkan diskon 15% untuk Pre-Order Batch #12 merchandise terbaru!');
   const [isScheduling, startSchedule] = useTransition();
 
   const handleSchedulePromo = () => {
     startSchedule(async () => {
       try {
-        const res = await schedulePromoBroadcast({
-          batchName: 'Batch #12 Open',
-          scheduleOption,
-          promoTemplate,
+        const response = await fetch('/api/dashboard', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'schedule_promo',
+            batchName: 'Batch #12 Open',
+            scheduleOption,
+            scheduledDate: scheduleOption === 'CUSTOM' ? scheduledDate : undefined,
+            promoTemplate,
+          }),
         });
-        setPromoNotification(res.message);
+        const res = await response.json();
+        setPromoNotification(res.message || 'Siaran promo berhasil dijadwalkan.');
       } catch (err) {
         alert('Gagal menjadwalkan siaran promo: ' + err);
       }
@@ -91,8 +108,13 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const handleSendPromoDormant = () => {
     startTransition(async () => {
       try {
-        const res = await sendPromoToDormant();
-        setPromoNotification(res.message);
+        const response = await fetch('/api/dashboard', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'send_promo_dormant' }),
+        });
+        const res = await response.json();
+        setPromoNotification(res.message || 'Promo berhasil dikirim.');
       } catch (err) {
         alert('Gagal mengirim promo: ' + err);
       }
@@ -478,7 +500,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   {[
                     { id: 'IMMEDIATE', title: 'Kirim Segera', desc: 'Eksekusi hari ini' },
                     { id: 'BATCH_NEXT', title: 'Batch #13 Open', desc: 'Terjadwal batch depan' },
-                    { id: 'CUSTOM', title: 'Kustom Kalender', desc: 'Pilih tanggal manual' },
+                    { id: 'CUSTOM', title: 'Pilih Tanggal', desc: 'Kustom kalender siaran' },
                   ].map((opt) => (
                     <div
                       key={opt.id}
@@ -489,11 +511,68 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                           : 'bg-slate-surface border-slate-border text-slate-text-secondary hover:bg-surface-container-low'
                       }`}
                     >
-                      <span className="block text-slate-text-primary font-bold text-xs">{opt.title}</span>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="block text-slate-text-primary font-bold text-xs">{opt.title}</span>
+                        {opt.id === 'CUSTOM' && <Calendar className="w-3.5 h-3.5 text-primary" />}
+                      </div>
                       <span className="text-[10px] text-slate-text-muted mt-0.5 block">{opt.desc}</span>
                     </div>
                   ))}
                 </div>
+
+                {/* Date Picker Interaktif saat opsi CUSTOM (Pilih Tanggal) dipilih */}
+                {scheduleOption === 'CUSTOM' && (
+                  <div className="mt-3 p-3.5 bg-surface-container-low rounded-xl border border-primary-container/40 animate-in fade-in slide-in-from-top-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 text-primary font-bold text-xs">
+                          <Calendar className="w-4 h-4 text-primary" />
+                          <span>Pilih Tanggal Pelaksanaan Promo PO:</span>
+                        </div>
+                        <p className="text-[11px] text-slate-text-muted mt-0.5">
+                          Tentukan kapan pesan siaran promosi WhatsApp otomatis dieksekusi ke pelanggan dormant.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="date"
+                          value={scheduledDate}
+                          min={new Date().toISOString().split('T')[0]}
+                          onChange={(e) => setScheduledDate(e.target.value)}
+                          className="px-3 py-2 bg-slate-card border border-slate-border rounded-lg text-xs font-semibold text-slate-text-primary focus:outline-none focus:border-primary-container shadow-xs cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                    {/* Preset Cepat Pilihan Tanggal */}
+                    <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-border/50 text-[10px] flex-wrap">
+                      <span className="text-slate-text-muted font-medium">Preset cepat:</span>
+                      {[
+                        { label: 'Besok', days: 1 },
+                        { label: '+3 Hari', days: 3 },
+                        { label: '+1 Minggu', days: 7 },
+                        { label: '+2 Minggu (Batch Depan)', days: 14 },
+                      ].map((preset) => {
+                        const targetD = new Date();
+                        targetD.setDate(targetD.getDate() + preset.days);
+                        const isoStr = targetD.toISOString().split('T')[0];
+                        return (
+                          <button
+                            key={preset.label}
+                            type="button"
+                            onClick={() => setScheduledDate(isoStr)}
+                            className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                              scheduledDate === isoStr
+                                ? 'bg-primary-container text-white font-bold'
+                                : 'bg-slate-card text-slate-text-secondary hover:text-primary border border-slate-border'
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -514,6 +593,18 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               <div className="flex items-center justify-between pt-2">
                 <span className="text-xs text-slate-text-muted">
                   Estimasi target: <strong>Pelanggan pasif dengan izin marketing</strong>
+                  {scheduleOption === 'CUSTOM' && scheduledDate && (
+                    <span className="ml-1 text-primary font-semibold">
+                      (Dijadwalkan:{' '}
+                      {new Date(scheduledDate + 'T00:00:00').toLocaleDateString('id-ID', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                      )
+                    </span>
+                  )}
                 </span>
 
                 <button
@@ -759,158 +850,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 4. SECTION D: Promo PO & Penjadwalan Aktivasi Pelanggan Pasif (P12 / TOWS S-T) */}
-      <section className="px-8 pb-10">
-        <div className="bg-slate-card rounded-2xl border border-slate-border shadow-xs p-6 flex flex-col gap-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-border">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-surface-container text-primary flex items-center justify-center">
-                <Send className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-text-primary">
-                  Pengaturan Jadwal Siaran Promo PO &amp; Repeat Order (P12 Roadmap)
-                </h2>
-                <p className="text-xs text-slate-text-secondary mt-0.5">
-                  Aktivasi pelanggan pasif/dormant dengan izin marketing WhatsApp aktif untuk meningkatkan konversi repeat-order.
-                </p>
-              </div>
-            </div>
-
-            <span className="px-2.5 py-1 rounded-full bg-status-success-surface text-status-success-text text-xs font-bold border border-status-success-border">
-              UU PDP Compliant
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left 7 Cols: Scheduler Form */}
-            <div className="lg:col-span-7 flex flex-col gap-4 text-xs">
-              <div>
-                <label className="block text-xs font-bold text-slate-text-primary mb-1.5">
-                  Pilihan Jadwal Siaran Broadcast PO
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {[
-                    { id: 'IMMEDIATE', title: 'Kirim Segera', desc: 'Eksekusi hari ini' },
-                    { id: 'BATCH_NEXT', title: 'Batch #13 Open', desc: 'Terjadwal batch depan' },
-                    { id: 'CUSTOM', title: 'Kustom Kalender', desc: 'Pilih tanggal manual' },
-                  ].map((opt) => (
-                    <div
-                      key={opt.id}
-                      onClick={() => setScheduleOption(opt.id as any)}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                        scheduleOption === opt.id
-                          ? 'bg-surface-container-low border-primary-container text-primary font-bold'
-                          : 'bg-slate-surface border-slate-border text-slate-text-secondary hover:bg-surface-container-low'
-                      }`}
-                    >
-                      <span className="block text-slate-text-primary font-bold text-xs">{opt.title}</span>
-                      <span className="text-[10px] text-slate-text-muted mt-0.5 block">{opt.desc}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-text-primary mb-1.5">
-                  Template Teks Pesan Promosi WhatsApp
-                </label>
-                <textarea
-                  rows={3}
-                  value={promoTemplate}
-                  onChange={(e) => setPromoTemplate(e.target.value)}
-                  className="w-full p-3 bg-slate-surface border border-slate-border rounded-lg text-xs text-slate-text-primary focus:outline-none focus:border-primary-container focus:bg-slate-card transition-all leading-relaxed font-sans"
-                />
-                <span className="text-[11px] text-slate-text-muted mt-1 block">
-                  Variabel <code className="text-primary font-mono">&#123;nama&#125;</code> akan otomatis digantikan dengan nama masing-masing pelanggan dormant.
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-xs text-slate-text-muted">
-                  Estimasi target: <strong>Pelanggan pasif dengan izin marketing</strong>
-                </span>
-
-                <button
-                  type="button"
-                  onClick={handleSchedulePromo}
-                  disabled={isScheduling}
-                  className="px-5 py-2.5 bg-primary-container hover:bg-secondary text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
-                >
-                  {isScheduling ? (
-                    <>
-                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Menjadwalkan...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Jadwalkan &amp; Eksekusi Siaran</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Right 5 Cols: Response Tracker */}
-            <div className="lg:col-span-5 bg-slate-surface p-5 rounded-xl border border-slate-border flex flex-col justify-between">
-              <div>
-                <h3 className="text-xs font-bold text-slate-text-primary uppercase tracking-wider mb-3">
-                  Pelacakan Status Respons Pelanggan (Funnel PO)
-                </h3>
-
-                <div className="space-y-3 text-xs">
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-slate-text-secondary font-medium">1. Pesan Terkirim Sukses</span>
-                      <span className="font-bold text-slate-text-primary">100%</span>
-                    </div>
-                    <div className="w-full bg-slate-border rounded-full h-1.5 overflow-hidden">
-                      <div className="bg-primary-container h-1.5 rounded-full" style={{ width: '100%' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-slate-text-secondary font-medium">2. Pesan Dibaca / Dibalas</span>
-                      <span className="font-bold text-slate-text-primary">68%</span>
-                    </div>
-                    <div className="w-full bg-slate-border rounded-full h-1.5 overflow-hidden">
-                      <div className="bg-primary h-1.5 rounded-full" style={{ width: '68%' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-slate-text-secondary font-medium">3. Konversi Jadi Pesanan PO Baru</span>
-                      <span className="font-bold text-status-success-text">34% (Target &gt; 25%)</span>
-                    </div>
-                    <div className="w-full bg-slate-border rounded-full h-1.5 overflow-hidden">
-                      <div className="bg-status-success-base h-1.5 rounded-full" style={{ width: '34%' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-slate-text-secondary font-medium">4. Keluhan / Opt-Out Stop Promo</span>
-                      <span className="font-bold text-slate-text-muted">0% (Sesuai UU PDP)</span>
-                    </div>
-                    <div className="w-full bg-slate-border rounded-full h-1.5 overflow-hidden">
-                      <div className="bg-slate-border h-1.5 rounded-full" style={{ width: '0%' }} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 mt-4 border-t border-slate-border text-[11px] text-slate-text-secondary flex items-center justify-between">
-                <span>Algoritma: TOWS S-T (S1+T1)</span>
-                <span className="font-mono text-status-success-text font-bold">Lolos Uji Audit</span>
-              </div>
-            </div>
           </div>
         </div>
       </section>
