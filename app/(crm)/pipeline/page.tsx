@@ -1,19 +1,22 @@
 import React, { Suspense } from 'react';
 import { connection } from 'next/server';
 import PipelineClient from './PipelineClient';
-import { getOrdersByStage } from '@/app/actions/orders';
-import { getCustomers } from '@/app/actions/customers';
+import { GET as getOrdersRoute } from '@/app/api/orders/route';
+import { GET as getCustomersRoute } from '@/app/api/customers/route';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PipelinePage() {
   await connection();
-  const [boardData, customers] = await Promise.all([
-    getOrdersByStage(),
-    getCustomers(),
+  const [ordersRes, customersRes] = await Promise.all([
+    getOrdersRoute(),
+    getCustomersRoute(),
   ]);
 
-  const customerOptions = customers.map((c) => ({
+  const boardData = await ordersRes.json();
+  const customers = await customersRes.json();
+
+  const customerOptions = (Array.isArray(customers) ? customers : []).map((c: { id: string; fullName: string; customerId: string }) => ({
     id: c.id,
     fullName: c.fullName,
     customerId: c.customerId,

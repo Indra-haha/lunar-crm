@@ -26,11 +26,9 @@ import {
   Phone,
 } from 'lucide-react';
 import Image from 'next/image';
-import {
+import type {
   PipelineBoardData,
   OrderPopulatedItem,
-  updateOrderStatus,
-  createOrder,
 } from '@/app/actions/orders';
 import { PipelineStatus } from '@/models/Order';
 import { formatRupiah } from '@/lib/formatters';
@@ -171,7 +169,14 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
 
     startTransition(async () => {
       try {
-        await updateOrderStatus(orderId, targetStage);
+        const res = await fetch(`/api/orders/${orderId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pipelineStatus: targetStage }),
+        });
+        if (!res.ok) {
+          throw new Error('Gagal memindahkan status pada server.');
+        }
       } catch (err) {
         alert('Gagal memindahkan status: ' + err);
       }
@@ -195,11 +200,20 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
 
     startTransition(async () => {
       try {
-        const newOrd = await createOrder(formData);
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
+        const result = await res.json();
+        if (!res.ok || result.error) {
+          throw new Error(result.error || 'Gagal membuat pesanan.');
+        }
+        const newOrd = result.order;
         const selectedCust = customersList.find((c) => c.id === formData.customerId);
 
         const newItem: OrderPopulatedItem = {
-          id: newOrd._id,
+          id: newOrd._id || newOrd.id,
           orderCode: newOrd.orderCode,
           customerId: formData.customerId,
           customerName: selectedCust?.fullName || 'Pelanggan',
@@ -218,8 +232,8 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
           daysInStage: 1,
           paymentStatus: newOrd.paymentStatus,
           vendorName: 'Vendor Akrilik Jaya',
-          enteredStageAt: newOrd.enteredStageAt,
-          createdAt: newOrd.createdAt,
+          enteredStageAt: newOrd.enteredStageAt || new Date().toISOString(),
+          createdAt: newOrd.createdAt || new Date().toISOString(),
         };
 
         setBoard((prev) => ({
