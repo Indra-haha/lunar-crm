@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { connectToDatabase, db } from '@/lib/db';
 import { leads, customers, orders, messageTemplates, InboundChannel, LeadStatus, PaymentStatus } from '@/lib/schema';
 import { eq, desc, or, asc } from 'drizzle-orm';
+import { getNextCustomerId, getNextOrderCode } from '@/lib/idGenerators';
 
 export interface PopulatedLeadItem {
   id: string;
@@ -112,8 +113,12 @@ export async function recordFirstResponse(leadId: string) {
     .where(eq(leads.id, leadId))
     .returning();
 
-  revalidatePath('/leads');
-  revalidatePath('/dashboard');
+  try {
+    revalidatePath('/leads');
+    revalidatePath('/dashboard');
+  } catch {
+    // fallback
+  }
 
   return { success: true, firstResponseAt: updated.firstResponseAt };
 }
@@ -144,18 +149,7 @@ export async function convertLeadToOrder(
   let targetCustomer = existingCust;
 
   if (!targetCustomer) {
-    const [lastCustomer] = await db
-      .select({ customerId: customers.customerId })
-      .from(customers)
-      .orderBy(desc(customers.createdAt))
-      .limit(1);
-
-    let nextNum = 1;
-    if (lastCustomer?.customerId) {
-      const match = lastCustomer.customerId.match(/CUST-(\d+)/);
-      if (match) nextNum = parseInt(match[1], 10) + 1;
-    }
-    const customerId = `CUST-${String(nextNum).padStart(3, '0')}`;
+    const customerId = await getNextCustomerId();
 
     const [createdCust] = await db
       .insert(customers)
@@ -175,18 +169,7 @@ export async function convertLeadToOrder(
   }
 
   // Create new Order
-  const [lastOrder] = await db
-    .select({ orderCode: orders.orderCode })
-    .from(orders)
-    .orderBy(desc(orders.createdAt))
-    .limit(1);
-
-  let nextOrderNum = 101;
-  if (lastOrder?.orderCode) {
-    const match = lastOrder.orderCode.match(/#LUN-ORD-(\d+)/);
-    if (match) nextOrderNum = parseInt(match[1], 10) + 1;
-  }
-  const orderCode = `#LUN-ORD-${String(nextOrderNum).padStart(3, '0')}`;
+  const orderCode = await getNextOrderCode();
 
   const [newOrder] = await db
     .insert(orders)
@@ -218,10 +201,14 @@ export async function convertLeadToOrder(
     })
     .where(eq(leads.id, leadId));
 
-  revalidatePath('/leads');
-  revalidatePath('/pipeline');
-  revalidatePath('/customers');
-  revalidatePath('/dashboard');
+  try {
+    revalidatePath('/leads');
+    revalidatePath('/pipeline');
+    revalidatePath('/customers');
+    revalidatePath('/dashboard');
+  } catch {
+    // fallback
+  }
 
   return {
     success: true,
@@ -252,17 +239,38 @@ export async function createTemplate(data: {
   category?: string;
 }) {
   await connectToDatabase();
+
+  let key = data.triggerKey?.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_') || '';
+  if (!key || key === 'CUSTOM_TEMPLATE') {
+    key = data.title.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_').slice(0, 30) || 'CUSTOM_TEMPLATE';
+  }
+
+  // Ensure triggerKey uniqueness
+  const [existing] = await db
+    .select({ id: messageTemplates.id })
+    .from(messageTemplates)
+    .where(eq(messageTemplates.triggerKey, key))
+    .limit(1);
+
+  if (existing) {
+    key = `${key}_${Date.now().toString().slice(-4)}`;
+  }
+
   const [template] = await db
     .insert(messageTemplates)
     .values({
-      title: data.title,
-      content: data.content,
-      triggerKey: data.triggerKey,
+      title: data.title.trim(),
+      content: data.content.trim(),
+      triggerKey: key,
       category: data.category || 'katalog',
     })
     .returning();
 
-  revalidatePath('/leads');
+  try {
+    revalidatePath('/leads');
+  } catch {
+    // fallback
+  }
   return {
     id: template.id,
     _id: template.id,

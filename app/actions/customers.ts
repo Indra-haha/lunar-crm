@@ -5,6 +5,7 @@ import { connectToDatabase, db } from '@/lib/db';
 import { customers, orders, supportTickets, AcquisitionChannel, CustomerSegment } from '@/lib/schema';
 import { eq, desc, ilike, or, inArray, and } from 'drizzle-orm';
 import { maskPhone } from '@/lib/formatters';
+import { getNextCustomerId } from '@/lib/idGenerators';
 
 export interface CustomerFilterParams {
   query?: string;
@@ -127,21 +128,8 @@ export async function createCustomer(data: {
 }) {
   await connectToDatabase();
 
-  // Generate sequential CUST-xxx
-  const [lastCustomer] = await db
-    .select({ customerId: customers.customerId })
-    .from(customers)
-    .orderBy(desc(customers.createdAt))
-    .limit(1);
-
-  let nextNum = 1;
-  if (lastCustomer?.customerId) {
-    const match = lastCustomer.customerId.match(/CUST-(\d+)/);
-    if (match) {
-      nextNum = parseInt(match[1], 10) + 1;
-    }
-  }
-  const customerId = `CUST-${String(nextNum).padStart(3, '0')}`;
+  // Generate sequential unique CUST-xxx
+  const customerId = await getNextCustomerId();
 
   const [newCustomer] = await db
     .insert(customers)
@@ -158,8 +146,12 @@ export async function createCustomer(data: {
     })
     .returning();
 
-  revalidatePath('/customers');
-  revalidatePath('/dashboard');
+  try {
+    revalidatePath('/customers');
+    revalidatePath('/dashboard');
+  } catch {
+    // fallback
+  }
 
   return {
     ...newCustomer,
@@ -194,8 +186,12 @@ export async function updateCustomer(
     .where(eq(customers.id, id))
     .returning();
 
-  revalidatePath('/customers');
-  revalidatePath('/dashboard');
+  try {
+    revalidatePath('/customers');
+    revalidatePath('/dashboard');
+  } catch {
+    // fallback
+  }
 
   return {
     ...updated,
@@ -208,8 +204,12 @@ export async function deleteCustomer(id: string) {
 
   await db.delete(customers).where(eq(customers.id, id));
 
-  revalidatePath('/customers');
-  revalidatePath('/dashboard');
+  try {
+    revalidatePath('/customers');
+    revalidatePath('/dashboard');
+  } catch {
+    // fallback
+  }
 
   return { success: true };
 }

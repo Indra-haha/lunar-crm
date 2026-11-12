@@ -5,6 +5,7 @@ import { connectToDatabase, db } from '@/lib/db';
 import { supportTickets, qaChecklists, orders, customers, TicketCategory, TicketStatus, PipelineStatus } from '@/lib/schema';
 import { eq, desc, ilike, or, inArray } from 'drizzle-orm';
 import { maskPhone } from '@/lib/formatters';
+import { getNextTicketCode } from '@/lib/idGenerators';
 
 export interface PopulatedTicketItem {
   id: string;
@@ -93,9 +94,13 @@ export async function submitQAChecklist(
       .where(eq(orders.id, orderId));
   }
 
-  revalidatePath('/support');
-  revalidatePath('/pipeline');
-  revalidatePath('/dashboard');
+  try {
+    revalidatePath('/support');
+    revalidatePath('/pipeline');
+    revalidatePath('/dashboard');
+  } catch {
+    // fallback
+  }
 
   return {
     success: true,
@@ -113,20 +118,7 @@ export async function createTicket(data: {
   await connectToDatabase();
 
   // Auto generate ticket code #LUN-TK-xxx
-  const [lastTicket] = await db
-    .select({ ticketCode: supportTickets.ticketCode })
-    .from(supportTickets)
-    .orderBy(desc(supportTickets.createdAt))
-    .limit(1);
-
-  let nextNum = 1;
-  if (lastTicket?.ticketCode) {
-    const match = lastTicket.ticketCode.match(/#LUN-TK-(\d+)/);
-    if (match) {
-      nextNum = parseInt(match[1], 10) + 1;
-    }
-  }
-  const ticketCode = `#LUN-TK-${String(nextNum).padStart(3, '0')}`;
+  const ticketCode = await getNextTicketCode();
 
   const [newTicket] = await db
     .insert(supportTickets)
@@ -140,8 +132,12 @@ export async function createTicket(data: {
     })
     .returning();
 
-  revalidatePath('/support');
-  revalidatePath('/dashboard');
+  try {
+    revalidatePath('/support');
+    revalidatePath('/dashboard');
+  } catch {
+    // fallback
+  }
 
   return { ...newTicket, _id: newTicket.id };
 }
@@ -163,8 +159,12 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
     .where(eq(supportTickets.id, ticketId))
     .returning();
 
-  revalidatePath('/support');
-  revalidatePath('/dashboard');
+  try {
+    revalidatePath('/support');
+    revalidatePath('/dashboard');
+  } catch {
+    // fallback
+  }
 
   return { ...updated, _id: updated?.id };
 }
@@ -424,20 +424,7 @@ export async function submitPublicComplaint(data: {
   }
 
   // Generate unique ticketCode #LUN-TK-xxx
-  const [lastTicket] = await db
-    .select({ ticketCode: supportTickets.ticketCode })
-    .from(supportTickets)
-    .orderBy(desc(supportTickets.createdAt))
-    .limit(1);
-
-  let nextNum = 1;
-  if (lastTicket?.ticketCode) {
-    const match = lastTicket.ticketCode.match(/#LUN-TK-(\d+)/);
-    if (match) {
-      nextNum = parseInt(match[1], 10) + 1;
-    }
-  }
-  const ticketCode = `#LUN-TK-${String(nextNum).padStart(3, '0')}`;
+  const ticketCode = await getNextTicketCode();
 
   let fullIssue = data.issueDetail.trim();
   if (data.expectedResolution) {

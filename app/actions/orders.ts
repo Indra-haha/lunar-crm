@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { connectToDatabase, db } from '@/lib/db';
 import { orders, customers, PipelineStatus, PaymentStatus } from '@/lib/schema';
 import { eq, desc, ilike } from 'drizzle-orm';
+import { getNextCustomerId, getNextOrderCode } from '@/lib/idGenerators';
 
 export interface OrderPopulatedItem {
   id: string;
@@ -167,21 +168,8 @@ export async function createOrder(data: {
     throw new Error('Pelanggan tidak valid');
   }
 
-  // Generate order code #LUN-ORD-xxx
-  const [lastOrder] = await db
-    .select({ orderCode: orders.orderCode })
-    .from(orders)
-    .orderBy(desc(orders.createdAt))
-    .limit(1);
-
-  let nextNum = 101;
-  if (lastOrder?.orderCode) {
-    const match = lastOrder.orderCode.match(/#LUN-ORD-(\d+)/);
-    if (match) {
-      nextNum = parseInt(match[1], 10) + 1;
-    }
-  }
-  const orderCode = `#LUN-ORD-${String(nextNum).padStart(3, '0')}`;
+  // Generate unique order code #LUN-ORD-xxx
+  const orderCode = await getNextOrderCode();
 
   const [newOrder] = await db
     .insert(orders)
@@ -203,9 +191,13 @@ export async function createOrder(data: {
     })
     .returning();
 
-  revalidatePath('/pipeline');
-  revalidatePath('/customers');
-  revalidatePath('/dashboard');
+  try {
+    revalidatePath('/pipeline');
+    revalidatePath('/customers');
+    revalidatePath('/dashboard');
+  } catch {
+    // fallback
+  }
 
   return {
     ...newOrder,
@@ -233,10 +225,14 @@ export async function updateOrderStatus(orderId: string, nextStatus: PipelineSta
     .where(eq(orders.id, orderId))
     .returning();
 
-  revalidatePath('/pipeline');
-  revalidatePath('/customers');
-  revalidatePath('/support');
-  revalidatePath('/dashboard');
+  try {
+    revalidatePath('/pipeline');
+    revalidatePath('/customers');
+    revalidatePath('/support');
+    revalidatePath('/dashboard');
+  } catch {
+    // fallback
+  }
 
   return {
     ...updated,
@@ -272,20 +268,7 @@ export async function submitPublicOrder(data: {
   let targetCustomer = existingCust;
 
   if (!targetCustomer) {
-    const [lastCust] = await db
-      .select({ customerId: customers.customerId })
-      .from(customers)
-      .orderBy(desc(customers.createdAt))
-      .limit(1);
-
-    let nextNum = 1;
-    if (lastCust?.customerId) {
-      const match = lastCust.customerId.match(/CUST-(\d+)/);
-      if (match) {
-        nextNum = parseInt(match[1], 10) + 1;
-      }
-    }
-    const customerId = `CUST-${String(nextNum).padStart(3, '0')}`;
+    const customerId = await getNextCustomerId();
 
     const [createdCust] = await db
       .insert(customers)
@@ -305,20 +288,7 @@ export async function submitPublicOrder(data: {
   }
 
   // 2. Generate unique orderCode #LUN-ORD-xxx
-  const [lastOrder] = await db
-    .select({ orderCode: orders.orderCode })
-    .from(orders)
-    .orderBy(desc(orders.createdAt))
-    .limit(1);
-
-  let nextOrderNum = 1;
-  if (lastOrder?.orderCode) {
-    const match = lastOrder.orderCode.match(/#LUN-ORD-(\d+)/);
-    if (match) {
-      nextOrderNum = parseInt(match[1], 10) + 1;
-    }
-  }
-  const orderCode = `#LUN-ORD-${String(nextOrderNum).padStart(3, '0')}`;
+  const orderCode = await getNextOrderCode();
   const paymentStatus: PaymentStatus = data.paymentPlan === 'DP_50' ? 'DP_PAID' : 'LUNAS';
 
   const [newOrder] = await db

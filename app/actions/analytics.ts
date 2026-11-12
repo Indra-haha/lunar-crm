@@ -221,7 +221,11 @@ export async function togglePinFeedback(feedbackId: string) {
     })
     .where(eq(customerFeedbacks.id, feedbackId));
 
-  revalidatePath('/dashboard');
+  try {
+    revalidatePath('/dashboard');
+  } catch {
+    // fallback
+  }
 
   return {
     success: true,

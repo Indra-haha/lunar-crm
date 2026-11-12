@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { connectToDatabase, db } from '@/lib/db';
 import { products, IProductVariant, ProductCategory } from '@/lib/schema';
 import { eq, desc, and } from 'drizzle-orm';
+import { getNextProductCode } from '@/lib/idGenerators';
 
 export interface ProductItem {
   id: string;
@@ -71,37 +72,49 @@ export async function createProduct(data: {
 }) {
   await connectToDatabase();
 
-  // Auto generate productCode PRD-xxx if not provided
+  const name = data.name?.trim();
+  if (!name) {
+    throw new Error('Nama produk tidak boleh kosong.');
+  }
+
+  // Auto generate productCode PRD-xxx if not provided or ensure custom code is unique
   let code = data.productCode?.trim().toUpperCase();
   if (!code) {
-    const [lastProd] = await db
-      .select({ productCode: products.productCode })
+    code = await getNextProductCode();
+  } else {
+    const [existing] = await db
+      .select({ id: products.id })
       .from(products)
-      .orderBy(desc(products.createdAt))
+      .where(eq(products.productCode, code))
       .limit(1);
 
-    let nextNum = 1;
-    if (lastProd?.productCode) {
-      const match = lastProd.productCode.match(/PRD-(\d+)/);
-      if (match) {
-        nextNum = parseInt(match[1], 10) + 1;
-      }
+    if (existing) {
+      throw new Error(`Kode produk "${code}" sudah digunakan. Gunakan kode lain.`);
     }
-    code = `PRD-${String(nextNum).padStart(3, '0')}`;
   }
+
+  const cleanedVariants: IProductVariant[] = (
+    data.variants && data.variants.length > 0
+      ? data.variants
+      : [{ name: 'Standar', additionalPrice: 0, stockOrQuota: 100 }]
+  ).map((v) => ({
+    name: v.name?.trim() || 'Standar',
+    additionalPrice: Math.max(0, Math.round(Number(v.additionalPrice) || 0)),
+    stockOrQuota: Math.max(0, Math.round(Number(v.stockOrQuota) || 0)),
+  }));
 
   const [newProd] = await db
     .insert(products)
     .values({
       productCode: code,
-      name: data.name.trim(),
-      category: data.category,
-      basePrice: data.basePrice,
-      vendorName: data.vendorName.trim(),
-      variants: data.variants && data.variants.length > 0 ? data.variants : [{ name: 'Standar', additionalPrice: 0, stockOrQuota: 100 }],
-      batchAvailable: data.batchAvailable || 'Batch #12 Open',
+      name,
+      category: data.category || 'AKRILIK',
+      basePrice: Math.max(0, Math.round(Number(data.basePrice) || 0)),
+      vendorName: (data.vendorName?.trim() || 'Maklon Akrilik Subur'),
+      variants: cleanedVariants,
+      batchAvailable: data.batchAvailable?.trim() || 'Batch #12 Open',
       isActive: true,
-      imageUrl: data.imageUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&auto=format&fit=crop&q=80',
+      imageUrl: data.imageUrl?.trim() || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&auto=format&fit=crop&q=80',
       description: data.description?.trim() || '',
     })
     .returning();
@@ -141,14 +154,53 @@ export async function updateProduct(
 ) {
   await connectToDatabase();
 
+  const updateValues: Record<string, unknown> = {
+    updatedAt: new Date(),
+  };
+
+  if (data.name !== undefined) {
+    const name = data.name.trim();
+    if (!name) throw new Error('Nama produk tidak boleh kosong.');
+    updateValues.name = name;
+  }
+  if (data.category !== undefined) {
+    updateValues.category = data.category;
+  }
+  if (data.basePrice !== undefined) {
+    updateValues.basePrice = Math.max(0, Math.round(Number(data.basePrice) || 0));
+  }
+  if (data.vendorName !== undefined) {
+    updateValues.vendorName = data.vendorName.trim();
+  }
+  if (data.batchAvailable !== undefined) {
+    updateValues.batchAvailable = data.batchAvailable.trim();
+  }
+  if (data.isActive !== undefined) {
+    updateValues.isActive = Boolean(data.isActive);
+  }
+  if (data.imageUrl !== undefined) {
+    updateValues.imageUrl = data.imageUrl.trim();
+  }
+  if (data.description !== undefined) {
+    updateValues.description = data.description.trim();
+  }
+  if (data.variants !== undefined) {
+    updateValues.variants = data.variants.map((v) => ({
+      name: v.name?.trim() || 'Standar',
+      additionalPrice: Math.max(0, Math.round(Number(v.additionalPrice) || 0)),
+      stockOrQuota: Math.max(0, Math.round(Number(v.stockOrQuota) || 0)),
+    }));
+  }
+
   const [updated] = await db
     .update(products)
-    .set({
-      ...data,
-      updatedAt: new Date(),
-    })
+    .set(updateValues)
     .where(eq(products.id, id))
     .returning();
+
+  if (!updated) {
+    throw new Error('Produk tidak ditemukan atau gagal diperbarui.');
+  }
 
   try {
     revalidatePath('/products');
