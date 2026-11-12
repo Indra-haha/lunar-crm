@@ -1,13 +1,14 @@
 import React, { Suspense } from 'react';
 import { connection } from 'next/server';
 import ProductsClient from './ProductsClient';
-import { getProducts } from '@/app/actions/products';
+import { GET } from '@/app/api/products/route';
 
 export const dynamic = 'force-dynamic';
 
 async function ProductsData() {
   await connection();
-  const products = await getProducts();
+  const res = await GET();
+  const products = await res.json();
   return <ProductsClient initialProducts={products} />;
 }
 

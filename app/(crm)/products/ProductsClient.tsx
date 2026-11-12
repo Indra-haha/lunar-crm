@@ -23,7 +23,7 @@ import {
   PlusCircle,
 } from 'lucide-react';
 import Image from 'next/image';
-import { ProductItem, createProduct, updateProduct, deleteProduct } from '@/app/actions/products';
+import type { ProductItem } from '@/app/actions/products';
 import { formatRupiah } from '@/lib/formatters';
 
 interface ProductsClientProps {
@@ -136,9 +136,14 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
     startTransition(async () => {
       try {
         if (editingProduct) {
-          const res = await updateProduct(editingProduct.id, formData);
-          if (!res.success) {
-            throw new Error('Gagal memperbarui produk.');
+          const response = await fetch(`/api/products/${editingProduct.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData),
+          });
+          const res = await response.json();
+          if (!response.ok || !res.success) {
+            throw new Error(res.error || 'Gagal memperbarui produk.');
           }
           setProducts((prev) =>
             prev.map((p) =>
@@ -152,8 +157,13 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
           );
           setNotification({ type: 'success', text: `Produk ${formData.name} berhasil diperbarui.` });
         } else {
-          const res = await createProduct(formData);
-          if (res.success && res.product) {
+          const response = await fetch('/api/products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData),
+          });
+          const res = await response.json();
+          if (response.ok && res.success && res.product) {
             const newCreated: ProductItem = {
               id: res.product.id,
               productCode: res.product.productCode,
@@ -171,7 +181,7 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
             setProducts([newCreated, ...products]);
             setNotification({ type: 'success', text: `Produk baru ${formData.name} (${res.product.productCode}) berhasil ditambahkan.` });
           } else {
-            throw new Error('Gagal menambahkan produk baru.');
+            throw new Error(res.error || 'Gagal menambahkan produk baru.');
           }
         }
         // Reset form & turn modal off
@@ -195,7 +205,11 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
 
     startTransition(async () => {
       try {
-        await deleteProduct(id);
+        const response = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+        const res = await response.json();
+        if (!response.ok || !res.success) {
+          throw new Error(res.error || 'Gagal menghapus produk.');
+        }
         setProducts((prev) => prev.filter((p) => p.id !== id));
         setNotification({ type: 'success', text: `Produk "${name}" berhasil dihapus.` });
       } catch (err) {
