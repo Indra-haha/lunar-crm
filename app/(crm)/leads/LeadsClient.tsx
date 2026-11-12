@@ -22,13 +22,8 @@ import {
   X,
   Phone,
 } from 'lucide-react';
-import {
-  PopulatedLeadItem,
-  recordFirstResponse,
-  convertLeadToOrder,
-  createTemplate,
-} from '@/app/actions/leads';
-import { MessageAuditLogItem } from '@/app/actions/messages';
+import type { PopulatedLeadItem } from '@/app/actions/leads';
+import type { MessageAuditLogItem } from '@/app/actions/messages';
 import { formatRelativeTime } from '@/lib/formatters';
 
 interface TemplateItem {
@@ -107,7 +102,11 @@ export default function LeadsClient({
 
     startTransition(async () => {
       try {
-        await recordFirstResponse(leadId);
+        await fetch('/api/leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'record_frt', leadId }),
+        });
       } catch (err) {
         console.error(err);
       }
@@ -147,7 +146,20 @@ export default function LeadsClient({
 
     startTransition(async () => {
       try {
-        await convertLeadToOrder(convertingLead.id, orderFormData);
+        const res = await fetch('/api/leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'convert',
+            leadId: convertingLead.id,
+            orderData: orderFormData,
+          }),
+        });
+        const result = await res.json();
+        if (!res.ok || result.error) {
+          throw new Error(result.error || 'Gagal konversi.');
+        }
+
         setLeads((prev) =>
           prev.map((l) =>
             l.id === convertingLead.id
@@ -171,7 +183,19 @@ export default function LeadsClient({
 
     startTransition(async () => {
       try {
-        const created = await createTemplate(newTemplateForm);
+        const res = await fetch('/api/leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'create_template',
+            ...newTemplateForm,
+          }),
+        });
+        const created = await res.json();
+        if (!res.ok || created.error) {
+          throw new Error(created.error || 'Gagal membuat template.');
+        }
+
         setTemplates((prev) => [...prev, created]);
         setIsNewTemplateModalOpen(false);
         setNewTemplateForm({
