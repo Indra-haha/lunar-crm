@@ -1,16 +1,14 @@
 import React, { Suspense } from 'react';
 import { connection } from 'next/server';
 import SupportClient from './SupportClient';
-import { getTickets, getQAWorkbenchData } from '@/app/actions/support';
+import { GET as getSupportRoute } from '@/app/api/support/route';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SupportPage() {
   await connection();
-  const [tickets, qaOrders] = await Promise.all([
-    getTickets(),
-    getQAWorkbenchData(),
-  ]);
+  const res = await getSupportRoute();
+  const { tickets, qaOrders } = await res.json();
 
   return (
     <Suspense fallback={<div className="p-8 text-slate-text-muted">Memuat data QC & tiket...</div>}>

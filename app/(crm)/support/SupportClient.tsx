@@ -24,13 +24,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import {
-  PopulatedTicketItem,
-  submitQAChecklist,
-  createTicket,
-  updateTicketStatus,
-} from '@/app/actions/support';
-import { updateOrderStatus } from '@/app/actions/orders';
+import type { PopulatedTicketItem } from '@/app/actions/support';
 import { TicketCategory, TicketStatus } from '@/models/SupportTicket';
 
 interface SupportClientProps {
@@ -109,35 +103,40 @@ export default function SupportClient({ initialTickets, qaOrders }: SupportClien
 
     startTransition(async () => {
       try {
-        const res = await submitQAChecklist(
-          currentQAOrder.id,
-          {
-            specMatched: qaChecks.specMatched,
-            quantityMatched: qaChecks.quantityMatched,
-            noDefects: qaChecks.noDefects,
-            peelOffFilmChecked: qaChecks.peelOffFilmChecked,
+        const response = await fetch('/api/support', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'qa_checklist',
+            orderId: currentQAOrder.id,
+            passedBrief: qaChecks.specMatched,
+            passedQuantity: qaChecks.quantityMatched,
+            passedDefectCheck: qaChecks.noDefects,
+            passedPeelOffFilm: qaChecks.peelOffFilmChecked,
+            inspectorName: qaChecks.inspectorName,
             notes: qaChecks.notes,
-          },
-          qaChecks.inspectorName
+            updateToQAPacking: true,
+          }),
+        });
+
+        const res = await response.json();
+        if (!response.ok || !res.success) {
+          throw new Error(res.error || 'Gagal menyimpan checklist QC.');
+        }
+
+        setQaSuccessMessage(
+          `QC Approved! Pesanan ${currentQAOrder.orderCode} berhasil lolos uji fisik 100% dan status otomatis dipindahkan ke SIAP KIRIM.`
         );
 
-        if (res.isApproved) {
-          setQaSuccessMessage(
-            `QC Approved! Pesanan ${currentQAOrder.orderCode} berhasil lolos uji fisik 100% dan status otomatis dipindahkan ke SIAP KIRIM.`
-          );
+        // Trigger real WhatsApp URL with pre-filled confirmation
+        const phone = currentQAOrder.customerPhone
+          ? currentQAOrder.customerPhone.replace(/[^0-9]/g, '').replace(/^0/, '62')
+          : '6281298448821';
+        const waMsg = `Halo kak ${currentQAOrder.customerName}! ✨ Kabar gembira dari Lunarchivve Merch & Studio: Pesanan merchandise kustom ${currentQAOrder.orderCode} (${currentQAOrder.productName}) telah selesai diperiksa oleh QC (${qaChecks.inspectorName}) dan LOLOS UJI KUALITAS 100% BEBAS CACAT. Paket saat ini sedang dipacking aman dan siap diserahkan ke kurir ekspedisi sore ini! 📦✨`;
+        const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(waMsg)}`;
 
-          // Trigger real WhatsApp URL with pre-filled confirmation
-          const phone = currentQAOrder.customerPhone
-            ? currentQAOrder.customerPhone.replace(/[^0-9]/g, '').replace(/^0/, '62')
-            : '6281298448821';
-          const waMsg = `Halo kak ${currentQAOrder.customerName}! ✨ Kabar gembira dari Lunarchivve Merch & Studio: Pesanan merchandise kustom ${currentQAOrder.orderCode} (${currentQAOrder.productName}) telah selesai diperiksa oleh QC (${qaChecks.inspectorName}) dan LOLOS UJI KUALITAS 100% BEBAS CACAT. Paket saat ini sedang dipacking aman dan siap diserahkan ke kurir ekspedisi sore ini! 📦✨`;
-          const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(waMsg)}`;
-
-          // Open WhatsApp web in new tab
-          window.open(waUrl, '_blank');
-        } else {
-          setQaSuccessMessage(`QC Checklist disimpan dengan catatan revisi.`);
-        }
+        // Open WhatsApp web in new tab
+        window.open(waUrl, '_blank');
       } catch (err) {
         alert('Gagal submit QC: ' + err);
       }
@@ -151,7 +150,14 @@ export default function SupportClient({ initialTickets, qaOrders }: SupportClien
 
     startTransition(async () => {
       try {
-        await updateOrderStatus(currentQAOrder.id, 'PRODUKSI_VENDOR');
+        const response = await fetch(`/api/orders/${currentQAOrder.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pipelineStatus: 'PRODUKSI_VENDOR' }),
+        });
+        if (!response.ok) {
+          throw new Error('Gagal update status pesanan ke server.');
+        }
         setQaSuccessMessage(
           `Pesanan ${currentQAOrder.orderCode} telah dikembalikan ke status PRODUKSI VENDOR untuk proses perbaikan (Rework).`
         );
@@ -178,7 +184,14 @@ export default function SupportClient({ initialTickets, qaOrders }: SupportClien
 
     startTransition(async () => {
       try {
-        await updateTicketStatus(ticketId, nextStatus);
+        const response = await fetch(`/api/support/${ticketId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: nextStatus }),
+        });
+        if (!response.ok) {
+          throw new Error('Gagal update status tiket ke server.');
+        }
       } catch (err) {
         alert('Gagal update status tiket: ' + err);
       }
@@ -192,11 +205,28 @@ export default function SupportClient({ initialTickets, qaOrders }: SupportClien
 
     startTransition(async () => {
       try {
-        const newTk = await createTicket(ticketForm);
         const refOrder = qaOrders.find((o) => o.id === ticketForm.orderId);
+        const response = await fetch('/api/support', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: ticketForm.orderId,
+            customerId: refOrder?.customerId || '00000000-0000-0000-0000-000000000000',
+            category: ticketForm.category,
+            issueDetail: ticketForm.issueDetail,
+            assignedPIC: ticketForm.assignedPIC,
+          }),
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Gagal membuat tiket.');
+        }
+
+        const newTk = result.ticket;
 
         const item: PopulatedTicketItem = {
-          id: newTk._id,
+          id: newTk._id || newTk.id,
           ticketCode: newTk.ticketCode,
           orderId: ticketForm.orderId,
           orderCode: refOrder?.orderCode || '#LUN-ORD-NEW',
