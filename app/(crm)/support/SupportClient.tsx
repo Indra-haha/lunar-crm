@@ -255,9 +255,9 @@ export default function SupportClient({ initialTickets, qaOrders }: SupportClien
         {/* Breadcrumb & Strategy Tag */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-slate-text-muted text-xs">
-            <span className="hover:text-slate-text-primary transition-colors cursor-pointer">
+            <Link href="/dashboard" className="hover:text-slate-text-primary transition-colors cursor-pointer">
               CRM
-            </span>
+            </Link>
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-slate-text-primary font-semibold">
               Tiket Keluhan &amp; Kontrol Kualitas QA
@@ -628,6 +628,16 @@ export default function SupportClient({ initialTickets, qaOrders }: SupportClien
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 <span>Form Keluhan Publik</span>
+              </Link>
+
+              <Link
+                href="/survei"
+                target="_blank"
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-bold transition-all border border-amber-200 shrink-0"
+                title="Buka form survei kepuasan pelanggan (CSAT) publik di tab baru"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Form CSAT (/survei)</span>
               </Link>
 
               <button

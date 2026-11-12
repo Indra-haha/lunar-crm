@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
+import Link from 'next/link';
 import {
   MessageSquare,
   Clock,
@@ -54,6 +55,7 @@ export default function LeadsClient({
   const [templates, setTemplates] = useState<TemplateItem[]>(initialTemplates);
   const [messageLogs] = useState<MessageAuditLogItem[]>(initialLogs);
   const [channelFilter, setChannelFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'NEW'>('all');
   const [searchLeadQuery, setSearchLeadQuery] = useState('');
   const [templateCategory, setTemplateCategory] = useState('all');
 
@@ -186,6 +188,7 @@ export default function LeadsClient({
 
   // Filtered Leads
   const filteredLeads = leads.filter((l) => {
+    if (statusFilter !== 'all' && l.status !== statusFilter) return false;
     if (channelFilter !== 'all') {
       if (channelFilter === 'instagram' && l.inboundChannel !== 'INSTAGRAM_DM') return false;
       if (channelFilter === 'tiktok' && l.inboundChannel !== 'TIKTOK_SHOP') return false;
@@ -214,9 +217,9 @@ export default function LeadsClient({
         {/* Breadcrumb & Strategy Tag */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-slate-text-muted text-xs">
-            <span className="hover:text-slate-text-primary transition-colors cursor-pointer">
+            <Link href="/dashboard" className="hover:text-slate-text-primary transition-colors cursor-pointer">
               CRM
-            </span>
+            </Link>
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-slate-text-primary font-semibold">
               Leads &amp; Template Balasan Cepat
@@ -226,9 +229,20 @@ export default function LeadsClient({
             </span>
           </div>
 
-          <div className="flex items-center gap-2 text-channel-whatsapp-text text-xs bg-channel-whatsapp-surface px-3 py-1 rounded-full border border-channel-whatsapp-base/20 font-semibold">
-            <Zap className="w-4 h-4 text-channel-whatsapp-base" />
-            <span>SLA First Response Time Target &lt; 15 Menit</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              href="/pesan"
+              target="_blank"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container hover:bg-surface-container-high text-primary text-xs font-semibold border border-primary/20 transition-colors"
+              title="Buka form pemesanan merchandise publik untuk dibagikan ke prospek"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Form Pemesanan (/pesan)</span>
+            </Link>
+            <div className="flex items-center gap-2 text-channel-whatsapp-text text-xs bg-channel-whatsapp-surface px-3 py-1 rounded-full border border-channel-whatsapp-base/20 font-semibold">
+              <Zap className="w-4 h-4 text-channel-whatsapp-base" />
+              <span>SLA First Response Time Target &lt; 15 Menit</span>
+            </div>
           </div>
         </div>
 
@@ -244,7 +258,16 @@ export default function LeadsClient({
 
         {/* 4 Quick Metrics Bento Bar */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-          <div className="bg-slate-card p-4 rounded-xl border border-slate-border shadow-xs flex flex-col justify-between">
+          <div
+            onClick={() => {
+              setStatusFilter('all');
+              setChannelFilter('all');
+              setSearchLeadQuery('');
+            }}
+            role="button"
+            className="bg-slate-card hover:bg-slate-surface p-4 rounded-xl border border-slate-border shadow-xs flex flex-col justify-between cursor-pointer transition-all"
+            title="Klik untuk melihat semua prospek leads (reset filter)"
+          >
             <span className="text-[11px] font-semibold text-slate-text-muted uppercase tracking-wider">
               Total Inbound Leads
             </span>
@@ -289,10 +312,19 @@ export default function LeadsClient({
             </span>
           </div>
 
-          <div className="bg-status-danger-surface p-4 rounded-xl border border-status-danger-border shadow-xs flex flex-col justify-between">
+          <div
+            onClick={() => setStatusFilter(statusFilter === 'NEW' ? 'all' : 'NEW')}
+            role="button"
+            className={`p-4 rounded-xl border shadow-xs flex flex-col justify-between cursor-pointer transition-all ${
+              statusFilter === 'NEW'
+                ? 'bg-status-danger-surface border-status-danger-base ring-2 ring-status-danger-base'
+                : 'bg-status-danger-surface border-status-danger-border hover:border-status-danger-base'
+            }`}
+            title="Klik untuk memfilter hanya leads yang belum dibalas (Pending)"
+          >
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-status-danger-text uppercase tracking-wider">
-                Pending Follow-Up
+                Pending Follow-Up {statusFilter === 'NEW' ? '• [Aktif]' : '• Filter'}
               </span>
               <span className="flex h-2.5 w-2.5 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-danger-base opacity-75" />
@@ -308,7 +340,9 @@ export default function LeadsClient({
               </span>
             </div>
             <span className="text-[10px] text-status-danger-text font-bold mt-1">
-              1 Prospek Kritis (&gt;25 Menit)
+              {statusFilter === 'NEW'
+                ? 'Menampilkan prospek status Baru. Klik lagi untuk reset.'
+                : '1 Prospek Kritis (>25 Menit)'}
             </span>
           </div>
         </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useTransition, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
   Search,
@@ -452,9 +453,9 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
         {/* Breadcrumb & Strategic Tagging */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-slate-text-muted text-xs">
-            <span className="hover:text-slate-text-primary transition-colors cursor-pointer">
+            <Link href="/dashboard" className="hover:text-slate-text-primary transition-colors cursor-pointer">
               CRM
-            </span>
+            </Link>
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-slate-text-primary font-semibold">
               Database Pelanggan
@@ -489,7 +490,16 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
 
           {/* 4 Bento Metric Pills */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-slate-card rounded-xl p-3.5 border border-slate-border shadow-xs flex flex-col justify-center min-w-[130px]">
+            <div
+              onClick={() => {
+                setSegmentFilter('ALL');
+                setChannelFilter('ALL');
+                setSearchQuery('');
+              }}
+              role="button"
+              className="bg-slate-card hover:bg-slate-surface rounded-xl p-3.5 border border-slate-border shadow-xs flex flex-col justify-center min-w-[130px] cursor-pointer transition-all"
+              title="Klik untuk melihat semua pelanggan (reset filter)"
+            >
               <span className="text-[11px] font-semibold text-slate-text-muted uppercase tracking-wider">
                 Total Pelanggan
               </span>
@@ -503,10 +513,19 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
               </div>
             </div>
 
-            <div className="bg-slate-card rounded-xl p-3.5 border border-slate-border shadow-xs flex flex-col justify-center min-w-[130px]">
+            <div
+              onClick={() => setSegmentFilter(segmentFilter === 'VIP' ? 'ALL' : 'VIP')}
+              role="button"
+              className={`rounded-xl p-3.5 border shadow-xs flex flex-col justify-center min-w-[130px] cursor-pointer transition-all ${
+                segmentFilter === 'VIP'
+                  ? 'bg-tier-vip-surface border-tier-vip-base ring-1 ring-tier-vip-base'
+                  : 'bg-slate-card hover:bg-slate-surface border-slate-border hover:border-tier-vip-base'
+              }`}
+              title="Klik untuk filter segmen VIP Loyal"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-tier-vip-text uppercase tracking-wider">
-                  VIP Loyal
+                  VIP Loyal {segmentFilter === 'VIP' ? '• [Aktif]' : ''}
                 </span>
                 <Award className="w-3.5 h-3.5 text-tier-vip-base" />
               </div>
@@ -1007,13 +1026,13 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
 
               {/* Bottom Quick Links */}
               <div className="flex items-center gap-2 pt-1 pb-2">
-                <a
-                  href={`/leads`}
+                <Link
+                  href="/leads"
                   className="flex-1 py-2 px-3 rounded-lg bg-slate-surface hover:bg-surface-container text-slate-text-primary text-xs font-bold border border-slate-border transition-colors flex items-center justify-center gap-1.5"
                 >
                   <MessageCircle className="w-3.5 h-3.5 text-channel-whatsapp-base" />
                   <span>Kirim Template WA</span>
-                </a>
+                </Link>
                 <button
                   type="button"
                   onClick={() => setIsAddOrderDrawerOpen(true)}

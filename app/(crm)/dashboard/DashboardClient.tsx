@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
+import Link from 'next/link';
 import {
   BarChart3,
   Clock,
@@ -113,9 +114,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         {/* Breadcrumb & Strategy Tag */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-slate-text-muted text-xs">
-            <span className="hover:text-slate-text-primary transition-colors cursor-pointer">
+            <Link href="/dashboard" className="hover:text-slate-text-primary transition-colors cursor-pointer">
               CRM
-            </span>
+            </Link>
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-slate-text-primary font-semibold">
               Dashboard KPI Layanan &amp; Ulasan CSAT
@@ -125,9 +126,20 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             </span>
           </div>
 
-          <div className="flex items-center gap-2 text-channel-whatsapp-text text-xs bg-channel-whatsapp-surface px-3 py-1 rounded-full border border-channel-whatsapp-base/20 font-semibold">
-            <ShieldCheck className="w-4 h-4 text-channel-whatsapp-base" />
-            <span>Audit CSAT Purnajual Terverifikasi (P12)</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              href="/survei"
+              target="_blank"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-surface-container hover:bg-surface-container-high text-primary rounded-full text-xs font-bold transition-all border border-primary/20 cursor-pointer"
+              title="Buka form kuesioner survei kepuasan pelanggan di tab baru"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Form Survei Publik (/survei)</span>
+            </Link>
+            <div className="flex items-center gap-2 text-channel-whatsapp-text text-xs bg-channel-whatsapp-surface px-3 py-1 rounded-full border border-channel-whatsapp-base/20 font-semibold">
+              <ShieldCheck className="w-4 h-4 text-channel-whatsapp-base" />
+              <span>Audit CSAT Purnajual Terverifikasi (P12)</span>
+            </div>
           </div>
         </div>
 
@@ -161,11 +173,15 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         {/* 4 Executive KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
           {/* Card 1: Avg FRT */}
-          <div className="bg-slate-card p-4 rounded-xl border border-slate-border shadow-xs flex flex-col justify-between">
+          <Link
+            href="/leads"
+            className="bg-slate-card hover:bg-slate-surface/80 hover:border-primary-container/40 transition-all p-4 rounded-xl border border-slate-border shadow-xs flex flex-col justify-between group cursor-pointer"
+            title="Buka workbench Leads & First Response Time"
+          >
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-[11px] font-semibold text-slate-text-muted uppercase tracking-wider">
-                  First Response Time (FRT)
+                <span className="text-[11px] font-semibold text-slate-text-muted uppercase tracking-wider group-hover:text-primary transition-colors">
+                  First Response Time (FRT) →
                 </span>
                 <div className="flex items-baseline gap-1 mt-1.5">
                   <span className="text-2xl font-bold text-slate-text-primary">
@@ -174,7 +190,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   <span className="text-xs text-slate-text-secondary font-medium">Menit</span>
                 </div>
               </div>
-              <div className="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+              <div className="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
                 <Clock className="w-4 h-4" />
               </div>
             </div>
@@ -184,14 +200,18 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               </span>
               <span className="text-slate-text-muted">Target: &lt;15m</span>
             </div>
-          </div>
+          </Link>
 
           {/* Card 2: Avg CRT */}
-          <div className="bg-slate-card p-4 rounded-xl border border-slate-border shadow-xs flex flex-col justify-between">
+          <Link
+            href="/support"
+            className="bg-slate-card hover:bg-slate-surface/80 hover:border-primary-container/40 transition-all p-4 rounded-xl border border-slate-border shadow-xs flex flex-col justify-between group cursor-pointer"
+            title="Buka workbench Tiket Keluhan & Resolusi (CRT)"
+          >
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-[11px] font-semibold text-slate-text-muted uppercase tracking-wider">
-                  Customer Resolution (CRT)
+                <span className="text-[11px] font-semibold text-slate-text-muted uppercase tracking-wider group-hover:text-primary transition-colors">
+                  Customer Resolution (CRT) →
                 </span>
                 <div className="flex items-baseline gap-1 mt-1.5">
                   <span className="text-2xl font-bold text-slate-text-primary">
@@ -200,8 +220,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   <span className="text-xs text-slate-text-secondary font-medium">Jam</span>
                 </div>
               </div>
-              <div className="w-9 h-9 rounded-lg bg-status-success-surface flex items-center justify-center text-status-success-text">
-                <CheckCircle2 className="w-4 h-4 text-status-success-base" />
+              <div className="w-9 h-9 rounded-lg bg-status-success-surface flex items-center justify-center text-status-success-text group-hover:bg-status-success-base group-hover:text-white transition-colors">
+                <CheckCircle2 className="w-4 h-4 text-status-success-base group-hover:text-white" />
               </div>
             </div>
             <div className="mt-3 pt-2.5 bg-slate-surface rounded-lg p-2 flex items-center justify-between text-[11px] border border-slate-border/50">
@@ -210,14 +230,18 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               </span>
               <span className="text-slate-text-muted">Target: &lt;4.0 Jam</span>
             </div>
-          </div>
+          </Link>
 
           {/* Card 3: CSAT Score */}
-          <div className="bg-slate-card p-4 rounded-xl border border-slate-border shadow-xs flex flex-col justify-between">
+          <a
+            href="#csat-curation"
+            className="bg-slate-card hover:bg-slate-surface/80 hover:border-primary-container/40 transition-all p-4 rounded-xl border border-slate-border shadow-xs flex flex-col justify-between group cursor-pointer"
+            title="Lihat feed ulasan kepuasan pelanggan (CSAT)"
+          >
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-[11px] font-semibold text-slate-text-muted uppercase tracking-wider">
-                  CSAT Satisfaction
+                <span className="text-[11px] font-semibold text-slate-text-muted uppercase tracking-wider group-hover:text-primary transition-colors">
+                  CSAT Satisfaction ↓
                 </span>
                 <div className="flex items-baseline gap-1 mt-1.5">
                   <span className="text-2xl font-bold text-slate-text-primary">
@@ -226,8 +250,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   <span className="text-xs text-slate-text-secondary font-medium">/ 5.0</span>
                 </div>
               </div>
-              <div className="w-9 h-9 rounded-lg bg-tier-vip-surface flex items-center justify-center text-tier-vip-text">
-                <Star className="w-4 h-4 text-tier-vip-base fill-tier-vip-base" />
+              <div className="w-9 h-9 rounded-lg bg-tier-vip-surface flex items-center justify-center text-tier-vip-text group-hover:bg-tier-vip-base group-hover:text-white transition-colors">
+                <Star className="w-4 h-4 text-tier-vip-base fill-tier-vip-base group-hover:text-white group-hover:fill-white" />
               </div>
             </div>
             <div className="mt-3 pt-2.5 bg-slate-surface rounded-lg p-2 flex items-center justify-between text-[11px] border border-slate-border/50">
@@ -236,14 +260,18 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               </span>
               <span className="text-slate-text-muted">Target: &gt;4.50</span>
             </div>
-          </div>
+          </a>
 
           {/* Card 4: First Contact Resolution */}
-          <div className="bg-slate-card p-4 rounded-xl border border-slate-border shadow-xs flex flex-col justify-between">
+          <Link
+            href="/pipeline"
+            className="bg-slate-card hover:bg-slate-surface/80 hover:border-primary-container/40 transition-all p-4 rounded-xl border border-slate-border shadow-xs flex flex-col justify-between group cursor-pointer"
+            title="Buka alur kerja pipeline pesanan PO"
+          >
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-[11px] font-semibold text-slate-text-muted uppercase tracking-wider">
-                  First Contact Resolution
+                <span className="text-[11px] font-semibold text-slate-text-muted uppercase tracking-wider group-hover:text-primary transition-colors">
+                  First Contact Resolution →
                 </span>
                 <div className="flex items-baseline gap-1 mt-1.5">
                   <span className="text-2xl font-bold text-slate-text-primary">
@@ -252,8 +280,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   <span className="text-xs text-slate-text-secondary font-medium">FCR</span>
                 </div>
               </div>
-              <div className="w-9 h-9 rounded-lg bg-channel-web-surface flex items-center justify-center text-channel-web-text">
-                <TrendingUp className="w-4 h-4 text-channel-web-base" />
+              <div className="w-9 h-9 rounded-lg bg-channel-web-surface flex items-center justify-center text-channel-web-text group-hover:bg-channel-web-base group-hover:text-white transition-colors">
+                <TrendingUp className="w-4 h-4 text-channel-web-base group-hover:text-white" />
               </div>
             </div>
             <div className="mt-3 pt-2.5 bg-slate-surface rounded-lg p-2 flex items-center justify-between text-[11px] border border-slate-border/50">
@@ -262,159 +290,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               </span>
               <span className="text-slate-text-muted">Target: &gt;85%</span>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 4. SECTION D: Promo PO & Penjadwalan Aktivasi Pelanggan Pasif (P12 / TOWS S-T) */}
-      <section className="px-8 pb-10">
-        <div className="bg-slate-card rounded-2xl border border-slate-border shadow-xs p-6 flex flex-col gap-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-border">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-surface-container text-primary flex items-center justify-center">
-                <Send className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-text-primary">
-                  Pengaturan Jadwal Siaran Promo PO &amp; Repeat Order (P12 Roadmap)
-                </h2>
-                <p className="text-xs text-slate-text-secondary mt-0.5">
-                  Aktivasi pelanggan pasif/dormant dengan izin marketing WhatsApp aktif untuk meningkatkan konversi repeat-order.
-                </p>
-              </div>
-            </div>
-
-            <span className="px-2.5 py-1 rounded-full bg-status-success-surface text-status-success-text text-xs font-bold border border-status-success-border">
-              UU PDP Compliant
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left 7 Cols: Scheduler Form */}
-            <div className="lg:col-span-7 flex flex-col gap-4 text-xs">
-              <div>
-                <label className="block text-xs font-bold text-slate-text-primary mb-1.5">
-                  Pilihan Jadwal Siaran Broadcast PO
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {[
-                    { id: 'IMMEDIATE', title: 'Kirim Segera', desc: 'Eksekusi hari ini' },
-                    { id: 'BATCH_NEXT', title: 'Batch #13 Open', desc: 'Terjadwal batch depan' },
-                    { id: 'CUSTOM', title: 'Kustom Kalender', desc: 'Pilih tanggal manual' },
-                  ].map((opt) => (
-                    <div
-                      key={opt.id}
-                      onClick={() => setScheduleOption(opt.id as any)}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                        scheduleOption === opt.id
-                          ? 'bg-surface-container-low border-primary-container text-primary font-bold'
-                          : 'bg-slate-surface border-slate-border text-slate-text-secondary hover:bg-surface-container-low'
-                      }`}
-                    >
-                      <span className="block text-slate-text-primary font-bold text-xs">{opt.title}</span>
-                      <span className="text-[10px] text-slate-text-muted mt-0.5 block">{opt.desc}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-text-primary mb-1.5">
-                  Template Teks Pesan Promosi WhatsApp
-                </label>
-                <textarea
-                  rows={3}
-                  value={promoTemplate}
-                  onChange={(e) => setPromoTemplate(e.target.value)}
-                  className="w-full p-3 bg-slate-surface border border-slate-border rounded-lg text-xs text-slate-text-primary focus:outline-none focus:border-primary-container focus:bg-slate-card transition-all leading-relaxed font-sans"
-                />
-                <span className="text-[11px] text-slate-text-muted mt-1 block">
-                  Variabel <code className="text-primary font-mono">&#123;nama&#125;</code> akan otomatis digantikan dengan nama masing-masing pelanggan dormant.
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-xs text-slate-text-muted">
-                  Estimasi target: <strong>Pelanggan pasif dengan izin marketing</strong>
-                </span>
-
-                <button
-                  type="button"
-                  onClick={handleSchedulePromo}
-                  disabled={isScheduling}
-                  className="px-5 py-2.5 bg-primary-container hover:bg-secondary text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
-                >
-                  {isScheduling ? (
-                    <>
-                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Menjadwalkan...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Jadwalkan &amp; Eksekusi Siaran</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Right 5 Cols: Response Tracker */}
-            <div className="lg:col-span-5 bg-slate-surface p-5 rounded-xl border border-slate-border flex flex-col justify-between">
-              <div>
-                <h3 className="text-xs font-bold text-slate-text-primary uppercase tracking-wider mb-3">
-                  Pelacakan Status Respons Pelanggan (Funnel PO)
-                </h3>
-
-                <div className="space-y-3 text-xs">
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-slate-text-secondary font-medium">1. Pesan Terkirim Sukses</span>
-                      <span className="font-bold text-slate-text-primary">100%</span>
-                    </div>
-                    <div className="w-full bg-slate-border rounded-full h-1.5 overflow-hidden">
-                      <div className="bg-primary-container h-1.5 rounded-full" style={{ width: '100%' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-slate-text-secondary font-medium">2. Pesan Dibaca / Dibalas</span>
-                      <span className="font-bold text-slate-text-primary">68%</span>
-                    </div>
-                    <div className="w-full bg-slate-border rounded-full h-1.5 overflow-hidden">
-                      <div className="bg-primary h-1.5 rounded-full" style={{ width: '68%' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-slate-text-secondary font-medium">3. Konversi Jadi Pesanan PO Baru</span>
-                      <span className="font-bold text-status-success-text">34% (Target &gt; 25%)</span>
-                    </div>
-                    <div className="w-full bg-slate-border rounded-full h-1.5 overflow-hidden">
-                      <div className="bg-status-success-base h-1.5 rounded-full" style={{ width: '34%' }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-slate-text-secondary font-medium">4. Keluhan / Opt-Out Stop Promo</span>
-                      <span className="font-bold text-slate-text-muted">0% (Sesuai UU PDP)</span>
-                    </div>
-                    <div className="w-full bg-slate-border rounded-full h-1.5 overflow-hidden">
-                      <div className="bg-slate-border h-1.5 rounded-full" style={{ width: '0%' }} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 mt-4 border-t border-slate-border text-[11px] text-slate-text-secondary flex items-center justify-between">
-                <span>Algoritma: TOWS S-T (S1+T1)</span>
-                <span className="font-mono text-status-success-text font-bold">Lolos Uji Audit</span>
-              </div>
-            </div>
-          </div>
+          </Link>
         </div>
       </section>
 
@@ -721,7 +597,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       </section>
 
       {/* 3. Bottom Section: Post-Purchase CSAT Feed & Testimonial Selector (TOWS S-O & S-T Execution) */}
-      <section className="px-8 pb-8">
+      <section id="csat-curation" className="px-8 pb-8 scroll-mt-20">
         <div className="bg-slate-card rounded-2xl border border-slate-border shadow-xs p-6 flex flex-col gap-6">
           {/* Section Header */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-border">

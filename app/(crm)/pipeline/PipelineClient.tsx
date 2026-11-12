@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useTransition, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Kanban,
   AlertTriangle,
@@ -102,6 +103,7 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
 
   // Selected Order for Detail Modal
   const [selectedOrder, setSelectedOrder] = useState<OrderPopulatedItem | null>(null);
+  const [overdueOnly, setOverdueOnly] = useState(false);
 
   // Filtered board based on search & batch
   const filteredBoard = useMemo(() => {
@@ -116,6 +118,9 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
 
     for (const stg of STAGES) {
       result[stg.key] = board[stg.key].filter((item) => {
+        // Overdue filter
+        if (overdueOnly && !item.stuckAlert) return false;
+
         // Batch filter
         if (batchFilter !== 'ALL') {
           if (batchFilter === 'BATCH12' && !item.batchName.includes('12')) return false;
@@ -137,7 +142,7 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
     }
 
     return result;
-  }, [board, batchFilter, kanbanSearch]);
+  }, [board, batchFilter, kanbanSearch, overdueOnly]);
 
   // Handle stage transition
   const handleMoveStage = (
@@ -228,6 +233,16 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
         }));
 
         setIsModalOpen(false);
+        setFormData({
+          customerId: customersList[0]?.id || '',
+          productName: 'Acrylic Keychain 6cm',
+          variantName: 'Glitter Sparkle',
+          quantity: 2,
+          totalPrice: 50000,
+          batchName: 'Batch #12 Keychain & Artprint',
+          briefNotes: 'Double side with star clasp',
+          paymentStatus: 'LUNAS',
+        });
       } catch (err) {
         alert('Gagal membuat pesanan: ' + err);
       }
@@ -241,9 +256,9 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
         {/* Breadcrumb & Strategy Tag */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-slate-text-muted text-xs">
-            <span className="hover:text-slate-text-primary transition-colors cursor-pointer">
+            <Link href="/dashboard" className="hover:text-slate-text-primary transition-colors cursor-pointer">
               CRM
-            </span>
+            </Link>
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-slate-text-primary font-semibold">
               Pesanan &amp; Pipeline
@@ -271,6 +286,15 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <Link
+              href="/pesan"
+              target="_blank"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-surface-container hover:bg-surface-container-high text-primary rounded-lg text-xs font-bold border border-primary/20 transition-all cursor-pointer"
+              title="Buka form pemesanan merchandise publik di tab baru"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Form Pemesanan (/pesan)</span>
+            </Link>
             <button
               type="button"
               onClick={() => window.print()}
@@ -293,7 +317,16 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
         {/* 4 Quick Metrics Bento Bar */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
           {/* Card 1: Batch Info */}
-          <div className="bg-slate-card p-4 rounded-xl border border-slate-border shadow-xs flex flex-col justify-between">
+          <div
+            onClick={() => {
+              setOverdueOnly(false);
+              setKanbanSearch('');
+              setBatchFilter('ALL');
+            }}
+            role="button"
+            className="bg-slate-card hover:bg-slate-surface p-4 rounded-xl border border-slate-border shadow-xs flex flex-col justify-between cursor-pointer transition-all"
+            title="Klik untuk reset semua filter papan"
+          >
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-slate-text-muted uppercase tracking-wider">
                 Batch PO Aktif
@@ -352,10 +385,19 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
           </div>
 
           {/* Card 3: Overdue SLA Critical */}
-          <div className="bg-status-danger-surface p-4 rounded-xl border border-status-danger-border shadow-xs flex flex-col justify-between">
+          <div
+            onClick={() => setOverdueOnly(!overdueOnly)}
+            role="button"
+            className={`p-4 rounded-xl border shadow-xs flex flex-col justify-between cursor-pointer transition-all ${
+              overdueOnly
+                ? 'bg-status-danger-surface border-status-danger-base ring-2 ring-status-danger-base'
+                : 'bg-status-danger-surface border-status-danger-border hover:border-status-danger-base'
+            }`}
+            title="Klik untuk memfilter kartu pesanan yang overdue"
+          >
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-status-danger-text uppercase tracking-wider">
-                Perlu Perhatian (SLA)
+                Perlu Perhatian (SLA) {overdueOnly ? '• [Filter Aktif]' : '• Filter'}
               </span>
               <span className="flex h-2.5 w-2.5 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-danger-base opacity-75" />
@@ -372,7 +414,9 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
                 </span>
               </div>
               <p className="text-[11px] text-status-danger-text mt-1">
-                Vendor Maklon bottleneck perlu eskalasi segera (TOWS W1+T2).
+                {overdueOnly
+                  ? 'Menampilkan kartu overdue SLA. Klik lagi untuk menampilkan semua.'
+                  : 'Vendor Maklon bottleneck perlu eskalasi segera (TOWS W1+T2).'}
               </p>
             </div>
           </div>
@@ -697,13 +741,13 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
                 >
                   Tutup
                 </button>
-                <a
+                <Link
                   href="/support"
                   className="px-4 py-2 rounded-lg bg-primary-container hover:bg-secondary text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>Buka Lembar QC</span>
-                </a>
+                </Link>
               </div>
             </div>
           </div>

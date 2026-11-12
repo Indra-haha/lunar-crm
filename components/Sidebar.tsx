@@ -233,20 +233,41 @@ export default function Sidebar() {
               </div>
             </div>
 
-            <div className="p-4 border-t border-slate-border bg-slate-surface flex items-center justify-between">
-              <Link
-                href="/komplain"
-                target="_blank"
-                onClick={() => setHelpOpen(false)}
-                className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
-              >
-                <span>Buka Form Keluhan Pelanggan</span>
-                <span className="text-[10px] font-mono">(/komplain)</span>
-              </Link>
+            <div className="p-4 border-t border-slate-border bg-slate-surface flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-semibold text-slate-text-muted">Portal Publik:</span>
+                <Link
+                  href="/pesan"
+                  target="_blank"
+                  onClick={() => setHelpOpen(false)}
+                  className="text-xs font-bold text-primary hover:underline flex items-center gap-1 bg-surface-container px-2 py-1 rounded"
+                >
+                  <span>Form Pesan</span>
+                  <span className="text-[10px] font-mono">(/pesan)</span>
+                </Link>
+                <Link
+                  href="/komplain"
+                  target="_blank"
+                  onClick={() => setHelpOpen(false)}
+                  className="text-xs font-bold text-status-danger-text hover:underline flex items-center gap-1 bg-status-danger-surface px-2 py-1 rounded border border-status-danger-border/40"
+                >
+                  <span>Form Keluhan</span>
+                  <span className="text-[10px] font-mono">(/komplain)</span>
+                </Link>
+                <Link
+                  href="/survei"
+                  target="_blank"
+                  onClick={() => setHelpOpen(false)}
+                  className="text-xs font-bold text-amber-700 hover:underline flex items-center gap-1 bg-amber-50 px-2 py-1 rounded border border-amber-200"
+                >
+                  <span>Survei CSAT</span>
+                  <span className="text-[10px] font-mono">(/survei)</span>
+                </Link>
+              </div>
               <button
                 type="button"
                 onClick={() => setHelpOpen(false)}
-                className="px-4 py-2 bg-primary-container hover:bg-secondary text-white text-xs font-bold rounded-lg cursor-pointer"
+                className="px-4 py-2 bg-primary-container hover:bg-secondary text-white text-xs font-bold rounded-lg cursor-pointer whitespace-nowrap self-end sm:self-auto"
               >
                 Saya Mengerti
               </button>
