@@ -670,7 +670,7 @@ export default function SupportClient({ initialTickets, qaOrders }: SupportClien
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-container hover:bg-secondary text-white rounded-lg text-xs font-bold shadow-xs transition-all cursor-pointer shrink-0"
               >
                 <PlusCircle className="w-4 h-4" />
-                <span>+ Buat Tiket Manual</span>
+                <span>Buat Tiket Manual</span>
               </button>
             </div>
           </div>

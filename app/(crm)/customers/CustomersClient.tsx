@@ -644,7 +644,7 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-container hover:bg-secondary text-white rounded-lg text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer"
             >
               <UserPlus className="w-4 h-4 text-white" />
-              <span>+ Tambah Pelanggan Baru</span>
+              <span>Tambah Pelanggan Baru</span>
             </button>
           </div>
         </div>

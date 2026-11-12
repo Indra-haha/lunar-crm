@@ -309,7 +309,7 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-container hover:bg-secondary text-white rounded-lg text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer"
             >
               <PlusCircle className="w-4 h-4 text-white" />
-              <span>+ Buat Pesanan Manual</span>
+              <span>Buat Pesanan Manual</span>
             </button>
           </div>
         </div>
