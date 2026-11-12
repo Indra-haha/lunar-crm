@@ -17,7 +17,7 @@ import {
   HelpCircle,
   UserCheck,
 } from 'lucide-react';
-import { loginAdmin } from '@/app/actions/auth';
+// Auth via /api/auth route handler
 
 function LoginForm() {
   const router = useRouter();
@@ -56,8 +56,18 @@ function LoginForm() {
 
     startTransition(async () => {
       try {
-        const result = await loginAdmin(idVal, passVal, remVal);
-        if (!result.success) {
+        const response = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identifier: idVal,
+            password: passVal,
+            rememberMe: remVal,
+          }),
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
           setErrorMessage(result.error || 'Autentikasi gagal.');
           return;
         }

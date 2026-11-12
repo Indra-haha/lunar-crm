@@ -19,7 +19,6 @@ import {
   LogOut,
   Package,
 } from 'lucide-react';
-import { logoutAdmin } from '@/app/actions/auth';
 
 const navigationItems = [
   {
@@ -159,7 +158,12 @@ export default function Sidebar() {
             <button
               type="button"
               onClick={async () => {
-                await logoutAdmin();
+                try {
+                  await fetch('/api/auth', { method: 'DELETE' });
+                } catch (e) {
+                  console.error(e);
+                }
+                window.location.href = '/login';
               }}
               title="Keluar dari sesi admin"
               className="flex items-center gap-1 text-[11px] text-slate-text-muted hover:text-rose-600 transition-colors cursor-pointer font-medium"

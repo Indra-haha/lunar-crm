@@ -18,9 +18,8 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { searchGlobal, GlobalSearchResult } from '@/app/actions/globalSearch';
-import { getSystemNotifications, SystemNotification } from '@/app/actions/notifications';
-import { getCurrentAdmin, logoutAdmin } from '@/app/actions/auth';
+import type { GlobalSearchResult } from '@/app/actions/globalSearch';
+import type { SystemNotification } from '@/app/actions/notifications';
 import type { SessionPayload } from '@/lib/auth';
 import { formatRupiah } from '@/lib/formatters';
 
@@ -46,12 +45,18 @@ export default function Topbar() {
 
   // Load real notifications & current logged in admin on mount
   useEffect(() => {
-    getSystemNotifications()
-      .then((data) => setNotifications(data))
+    fetch('/api/notifications')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) setNotifications(data);
+      })
       .catch((err) => console.error(err));
 
-    getCurrentAdmin()
-      .then((data) => setAdminUser(data))
+    fetch('/api/auth')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.admin) setAdminUser(data.admin);
+      })
       .catch((err) => console.error(err));
   }, []);
 
@@ -85,8 +90,11 @@ export default function Topbar() {
     const timer = setTimeout(() => {
       startTransition(async () => {
         try {
-          const res = await searchGlobal(searchQuery);
-          setSearchResults(res);
+          const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+          if (res.ok) {
+            const data = await res.json();
+            setSearchResults(data);
+          }
         } catch (err) {
           console.error(err);
         } finally {
@@ -470,7 +478,12 @@ export default function Topbar() {
                     type="button"
                     onClick={async () => {
                       setProfileOpen(false);
-                      await logoutAdmin();
+                      try {
+                        await fetch('/api/auth', { method: 'DELETE' });
+                      } catch (e) {
+                        console.error(e);
+                      }
+                      window.location.href = '/login';
                     }}
                     className="w-full p-2 rounded-lg hover:bg-rose-50 text-status-danger-text flex items-center justify-between text-xs font-semibold cursor-pointer transition-colors"
                   >
