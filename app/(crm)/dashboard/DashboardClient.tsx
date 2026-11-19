@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   BarChart3,
   Clock,
@@ -62,6 +63,7 @@ interface DashboardClientProps {
 }
 
 export default function DashboardClient({ initialData, userRole }: DashboardClientProps) {
+  const router = useRouter();
   const isSuperAdmin = userRole === 'SUPER_ADMIN';
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(initialData.feedbacks);
   const [feedbackFilter, setFeedbackFilter] = useState<'all' | 'five_star' | 'pinned'>('all');
@@ -69,6 +71,7 @@ export default function DashboardClient({ initialData, userRole }: DashboardClie
 
   // State for Broadcast Promo result
   const [promoNotification, setPromoNotification] = useState<string | null>(null);
+  const [openWhatsAppTabs, setOpenWhatsAppTabs] = useState(false);
 
   // Toggle Pin Feedback
   const handleTogglePin = (feedbackId: string) => {
@@ -147,7 +150,7 @@ export default function DashboardClient({ initialData, userRole }: DashboardClie
     setIsDormantModalOpen(true);
   };
 
-  const handleExecuteBatchPromo = async () => {
+  const handleExecuteBatchPromo = async (openTabs = openWhatsAppTabs) => {
     setIsDispatchingBatch(true);
     setModalSuccessMsg(null);
     try {
@@ -167,6 +170,23 @@ export default function DashboardClient({ initialData, userRole }: DashboardClie
       const successText = res.message || 'Siaran promo berhasil dikirim ke seluruh pelanggan pasif!';
       setModalSuccessMsg(successText);
       setPromoNotification(successText);
+
+      // Jika user memilih untuk membuka tab WhatsApp Web
+      if (openTabs) {
+        const eligible = dormantList.filter((c) => c.acceptsMarketing);
+        eligible.forEach((cust) => {
+          const cleanPhone = cust.rawPhone.replace(/^0/, '62').replace(/[^0-9]/g, '');
+          const personalizedMessage = promoTemplate.replace(/{nama}/g, cust.fullName);
+          const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(personalizedMessage)}`;
+          window.open(waUrl, '_blank');
+        });
+      }
+
+      // 1. Tutup modal secara langsung
+      setIsDormantModalOpen(false);
+
+      // 2. Arahkan pengguna ke halaman tabel riwayat log (/leads#message-logs)
+      router.push('/leads#message-logs');
     } catch (err) {
       alert('Gagal mengirim siaran promo: ' + err);
     } finally {
@@ -1173,11 +1193,30 @@ export default function DashboardClient({ initialData, userRole }: DashboardClie
               </div>
             </div>
 
+            {/* Info Box: Mekanisme Pengiriman WhatsApp */}
+            <div className="px-5 pb-1">
+              <div className="p-3 bg-surface-container-low rounded-xl border border-slate-border flex items-start gap-2.5 text-[11px] text-slate-text-secondary leading-relaxed">
+                <ShieldCheck className="w-4 h-4 text-channel-whatsapp-base shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-slate-text-primary">Mekanisme Pengiriman &amp; Kepatuhan UU PDP:</span>
+                  <p className="mt-0.5">
+                    Tombol siaran akan memvalidasi izin marketing, mencatat pengiriman resmi ke <strong>Tabel Riwayat Notifikasi &amp; Pesan WhatsApp (Message Logs)</strong>, menutup modal, dan langsung mengarahkan Anda ke riwayat log. Anda juga dapat mencentang opsi di bawah jika ingin membuka tab WhatsApp Web sekaligus.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-border bg-slate-surface flex flex-col sm:flex-row items-center justify-between gap-3">
-              <span className="text-[11px] text-slate-text-muted">
-                Diproses dengan identitas PIC aktif untuk Audit Log.
-              </span>
+            <div className="p-4 border-t border-slate-border bg-slate-surface flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <label className="flex items-center gap-2 cursor-pointer text-[11px] text-slate-text-secondary select-none">
+                <input
+                  type="checkbox"
+                  checked={openWhatsAppTabs}
+                  onChange={(e) => setOpenWhatsAppTabs(e.target.checked)}
+                  className="rounded border-slate-border text-channel-whatsapp-base focus:ring-channel-whatsapp-base cursor-pointer"
+                />
+                <span>Sekaligus buka tab WhatsApp Web ({dormantList.filter((c) => c.acceptsMarketing).length} nomor aktif)</span>
+              </label>
 
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <button
@@ -1185,25 +1224,25 @@ export default function DashboardClient({ initialData, userRole }: DashboardClie
                   onClick={() => setIsDormantModalOpen(false)}
                   className="px-4 py-2 rounded-lg bg-slate-card hover:bg-slate-border border border-slate-border text-slate-text-primary text-xs font-semibold cursor-pointer"
                 >
-                  Tutup
+                  Batal
                 </button>
 
                 <button
                   type="button"
-                  onClick={handleExecuteBatchPromo}
+                  onClick={() => handleExecuteBatchPromo(openWhatsAppTabs)}
                   disabled={isDispatchingBatch || dormantList.filter((c) => c.acceptsMarketing).length === 0}
                   className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-channel-whatsapp-base hover:bg-channel-whatsapp-text text-white text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
                 >
                   {isDispatchingBatch ? (
                     <>
                       <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Menyiarkan...</span>
+                      <span>Menyiarkan &amp; Membuka Riwayat Log...</span>
                     </>
                   ) : (
                     <>
                       <Send className="w-3.5 h-3.5" />
                       <span>
-                        Kirim Siaran ke Semua ({dormantList.filter((c) => c.acceptsMarketing).length}) &amp; Catat Log
+                        Kirim Siaran ke Semua ({dormantList.filter((c) => c.acceptsMarketing).length}) &amp; Buka Riwayat Log
                       </span>
                     </>
                   )}

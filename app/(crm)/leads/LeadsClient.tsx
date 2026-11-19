@@ -748,7 +748,7 @@ export default function LeadsClient({
       </section>
 
       {/* 2.5 SECTION C: Tabel Riwayat Pengiriman WhatsApp (Message Audit Log) */}
-      <section className="px-8 pb-8">
+      <section id="message-logs" className="px-8 pb-8 scroll-mt-20">
         <div className="bg-slate-card rounded-2xl border border-slate-border shadow-xs p-6 flex flex-col gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-border">
             <div className="flex items-center gap-2.5">
