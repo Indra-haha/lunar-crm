@@ -22,12 +22,29 @@ import {
   Zap,
   Calendar,
   Lock,
+  Users,
+  X,
+  MessageCircle,
 } from 'lucide-react';
 import type {
   KPIMetrics,
   FeedbackItem,
 } from '@/app/actions/analytics';
 import { formatRelativeTime } from '@/lib/formatters';
+
+export interface DormantCustomerItem {
+  id: string;
+  customerId: string;
+  fullName: string;
+  socialHandle: string;
+  rawPhone: string;
+  maskedPhone: string;
+  city: string;
+  acceptsMarketing: boolean;
+  daysInactive: number;
+  lastBatch?: string;
+  lastOrderDate?: string;
+}
 
 interface DashboardClientProps {
   initialData: {
@@ -39,6 +56,7 @@ interface DashboardClientProps {
     };
     feedbacks: FeedbackItem[];
     weeklyFRT: Array<{ day: string; frt: number; target: number }>;
+    dormantCustomers?: DormantCustomerItem[];
   };
   userRole?: string;
 }
@@ -118,25 +136,46 @@ export default function DashboardClient({ initialData, userRole }: DashboardClie
     });
   };
 
-  const handleSendPromoDormant = () => {
-    if (!isSuperAdmin) {
-      alert('Akses Dibatasi: Pengiriman promo hanya dapat dilakukan oleh Super Admin.');
-      return;
-    }
+  // Dormant Promo Modal State & List from Database
+  const [isDormantModalOpen, setIsDormantModalOpen] = useState(false);
+  const [modalSuccessMsg, setModalSuccessMsg] = useState<string | null>(null);
+  const [isDispatchingBatch, setIsDispatchingBatch] = useState(false);
+  const dormantList: DormantCustomerItem[] = initialData.dormantCustomers || [];
 
-    startTransition(async () => {
-      try {
-        const response = await fetch('/api/dashboard', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'send_promo_dormant' }),
-        });
-        const res = await response.json();
-        setPromoNotification(res.message || 'Promo berhasil dikirim.');
-      } catch (err) {
-        alert('Gagal mengirim promo: ' + err);
+  const handleOpenDormantModal = () => {
+    setModalSuccessMsg(null);
+    setIsDormantModalOpen(true);
+  };
+
+  const handleExecuteBatchPromo = async () => {
+    setIsDispatchingBatch(true);
+    setModalSuccessMsg(null);
+    try {
+      const response = await fetch('/api/dashboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send_promo_dormant',
+          promoTemplate,
+          batchName: 'Batch #12 Open',
+        }),
+      });
+      const res = await response.json();
+      if (!response.ok) {
+        throw new Error(res.error || 'Gagal mengirim promo');
       }
-    });
+      const successText = res.message || 'Siaran promo berhasil dikirim ke seluruh pelanggan pasif!';
+      setModalSuccessMsg(successText);
+      setPromoNotification(successText);
+    } catch (err) {
+      alert('Gagal mengirim siaran promo: ' + err);
+    } finally {
+      setIsDispatchingBatch(false);
+    }
+  };
+
+  const handleSendPromoDormant = () => {
+    handleOpenDormantModal();
   };
 
   const filteredFeedbacks = feedbacks.filter((f) => {
@@ -639,29 +678,41 @@ export default function DashboardClient({ initialData, userRole }: DashboardClie
                   )}
                 </span>
 
-                <button
-                  type="button"
-                  onClick={handleSchedulePromo}
-                  disabled={isScheduling || !isSuperAdmin}
-                  title={!isSuperAdmin ? 'Hanya Super Admin yang berwenang mengeksekusi siaran promo' : undefined}
-                  className={`px-5 py-2.5 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 ${
-                    isSuperAdmin
-                      ? 'bg-primary-container hover:bg-secondary text-white cursor-pointer'
-                      : 'bg-slate-surface border border-slate-border text-slate-text-muted cursor-not-allowed opacity-60'
-                  }`}
-                >
-                  {isScheduling ? (
-                    <>
-                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Menjadwalkan...</span>
-                    </>
-                  ) : (
-                    <>
-                      {isSuperAdmin ? <Send className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                      <span>{isSuperAdmin ? 'Jadwalkan & Eksekusi Siaran' : 'Terkunci (Super Admin)'}</span>
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleOpenDormantModal}
+                    className="px-3.5 py-2.5 bg-slate-surface hover:bg-slate-card border border-slate-border text-slate-text-primary font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                    title="Buka daftar pelanggan pasif dan editor WhatsApp"
+                  >
+                    <Users className="w-3.5 h-3.5 text-secondary" />
+                    <span>Daftar Target ({dormantList.length})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSchedulePromo}
+                    disabled={isScheduling || !isSuperAdmin}
+                    title={!isSuperAdmin ? 'Hanya Super Admin yang berwenang mengeksekusi siaran promo' : undefined}
+                    className={`px-5 py-2.5 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 ${
+                      isSuperAdmin
+                        ? 'bg-primary-container hover:bg-secondary text-white cursor-pointer'
+                        : 'bg-slate-surface border border-slate-border text-slate-text-muted cursor-not-allowed opacity-60'
+                    }`}
+                  >
+                    {isScheduling ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Menjadwalkan...</span>
+                      </>
+                    ) : (
+                      <>
+                        {isSuperAdmin ? <Send className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                        <span>{isSuperAdmin ? 'Jadwalkan & Eksekusi Siaran' : 'Terkunci (Super Admin)'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -746,11 +797,14 @@ export default function DashboardClient({ initialData, userRole }: DashboardClie
               <button
                 type="button"
                 onClick={handleSendPromoDormant}
-                disabled={isPending}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-channel-whatsapp-base hover:bg-channel-whatsapp-text text-white text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-channel-whatsapp-base hover:bg-channel-whatsapp-text text-white text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer"
+                title="Buka workbench siaran promo retargeting pelanggan pasif (>60 hari)"
               >
                 <Send className="w-4 h-4" />
                 <span>Kirim Promo PO ke Pelanggan Pasif (&gt;60 hari)</span>
+                <span className="px-1.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-bold">
+                  {dormantList.length}
+                </span>
               </button>
             </div>
           </div>
@@ -896,6 +950,269 @@ export default function DashboardClient({ initialData, userRole }: DashboardClie
           </div>
         </div>
       </section>
+
+      {/* MODAL: Kirim Promo PO ke Pelanggan Pasif (>60 Hari) */}
+      {isDormantModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-card rounded-2xl border border-slate-border shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="p-5 border-b border-slate-border flex items-center justify-between bg-slate-surface">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-channel-whatsapp-surface border border-channel-whatsapp-base/30 text-channel-whatsapp-base flex items-center justify-center">
+                  <Send className="w-5 h-5 text-channel-whatsapp-base" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-text-primary flex items-center gap-2">
+                    <span>Siaran Promo Retargeting Pelanggan Pasif (&gt;60 Hari)</span>
+                    <span className="px-2 py-0.5 rounded-full bg-channel-whatsapp-surface text-channel-whatsapp-text text-[10px] font-bold border border-channel-whatsapp-base/20">
+                      TOWS S-T (S1+T1)
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-text-muted mt-0.5">
+                    Kirim pesan penawaran eksklusif PO Batch #12 ke pelanggan yang belum bertransaksi ulang &gt;60 hari (Kepatuhan UU PDP No. 27/2022).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDormantModalOpen(false)}
+                className="text-slate-text-muted hover:text-slate-text-primary p-1 rounded-lg hover:bg-slate-card transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto flex flex-col gap-5 text-xs text-slate-text-secondary">
+              {/* Success Alert Banner if sent */}
+              {modalSuccessMsg && (
+                <div className="p-3.5 bg-channel-whatsapp-surface border border-channel-whatsapp-base/30 rounded-xl text-xs font-bold text-channel-whatsapp-text flex items-center justify-between animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-channel-whatsapp-base shrink-0" />
+                    <span>{modalSuccessMsg}</span>
+                  </div>
+                  <Link
+                    href="/leads"
+                    className="text-[11px] underline text-channel-whatsapp-text hover:opacity-80"
+                  >
+                    Buka Log Leads →
+                  </Link>
+                </div>
+              )}
+
+              {/* Stat Summary Box */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3 bg-slate-surface rounded-xl border border-slate-border">
+                  <span className="text-[11px] text-slate-text-muted block mb-1">Total Pelanggan Pasif</span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-lg font-bold text-slate-text-primary">{dormantList.length}</span>
+                    <span className="text-[10px] text-slate-text-muted">&gt;60 hari inaktif</span>
+                  </div>
+                </div>
+                <div className="p-3 bg-channel-whatsapp-surface/40 rounded-xl border border-channel-whatsapp-base/20">
+                  <span className="text-[11px] text-channel-whatsapp-text block mb-1">Opt-In Siap Dikirim</span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-lg font-bold text-channel-whatsapp-text">
+                      {dormantList.filter((c) => c.acceptsMarketing).length}
+                    </span>
+                    <span className="text-[10px] text-channel-whatsapp-text/80">Izin marketing aktif</span>
+                  </div>
+                </div>
+                <div className="p-3 bg-slate-surface rounded-xl border border-slate-border">
+                  <span className="text-[11px] text-slate-text-muted block mb-1">Perlindungan UU PDP</span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-lg font-bold text-slate-text-primary">
+                      {dormantList.filter((c) => !c.acceptsMarketing).length}
+                    </span>
+                    <span className="text-[10px] text-slate-text-muted">Opt-out dilindungi</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Message Template Editor */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="font-bold text-slate-text-primary text-xs flex items-center gap-1.5">
+                    <MessageSquare className="w-3.5 h-3.5 text-primary" />
+                    <span>Template Pesan WhatsApp Promosi:</span>
+                  </label>
+                  <span className="text-[11px] text-slate-text-muted">
+                    Gunakan tag <code className="text-primary font-mono bg-slate-surface px-1 py-0.5 rounded">&#123;nama&#125;</code>
+                  </span>
+                </div>
+                <textarea
+                  rows={3}
+                  value={promoTemplate}
+                  onChange={(e) => setPromoTemplate(e.target.value)}
+                  placeholder="Ketik template pesan siaran promo..."
+                  className="w-full p-3 bg-slate-surface border border-slate-border rounded-xl text-xs text-slate-text-primary focus:outline-none focus:border-primary-container focus:bg-slate-card transition-all leading-relaxed"
+                />
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <span className="text-[11px] text-slate-text-muted font-medium">Pilihan template cepat:</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPromoTemplate(
+                        'Halo {nama}! Khusus kamu pelanggan setia Lunarchivve, dapatkan diskon 15% untuk Pre-Order Batch #12 merchandise terbaru! Balas pesan ini untuk klaim voucher diskon kamu ya ✨'
+                      )
+                    }
+                    className="text-[10px] px-2 py-1 rounded bg-slate-surface hover:bg-slate-border border border-slate-border text-slate-text-secondary cursor-pointer"
+                  >
+                    Diskon 15% Batch #12
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPromoTemplate(
+                        'Halo {nama}! Kangen buat merchandise unik? Ada promo GRATIS ONGKIR + Free Keychain Mini khusus repeat-order kamu di Batch #12 minggu ini 🎁'
+                      )
+                    }
+                    className="text-[10px] px-2 py-1 rounded bg-slate-surface hover:bg-slate-border border border-slate-border text-slate-text-secondary cursor-pointer"
+                  >
+                    Gratis Ongkir + Keychain
+                  </button>
+                </div>
+              </div>
+
+              {/* Target Customer Cards List */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-bold text-slate-text-primary text-xs flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-secondary" />
+                    <span>Daftar Target Pelanggan Pasif (&gt;60 Hari):</span>
+                  </h4>
+                  <span className="text-[11px] text-slate-text-muted">
+                    {dormantList.length} Pelanggan Terdaftar
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {dormantList.map((cust) => {
+                    const cleanPhone = cust.rawPhone.replace(/^0/, '62').replace(/[^0-9]/g, '');
+                    const personalizedMessage = promoTemplate.replace(/{nama}/g, cust.fullName);
+                    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(personalizedMessage)}`;
+
+                    return (
+                      <div
+                        key={cust.id}
+                        className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${
+                          cust.acceptsMarketing
+                            ? 'bg-slate-card border-slate-border hover:border-channel-whatsapp-base/40'
+                            : 'bg-slate-surface/40 border-slate-border/50 opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                              cust.acceptsMarketing
+                                ? 'bg-channel-whatsapp-surface text-channel-whatsapp-text border border-channel-whatsapp-base/20'
+                                : 'bg-slate-border text-slate-text-muted'
+                            }`}
+                          >
+                            {cust.fullName.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-text-primary text-xs">
+                                {cust.fullName}
+                              </span>
+                              <span className="text-[11px] text-slate-text-muted">
+                                {cust.socialHandle}
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 font-semibold">
+                                {cust.daysInactive} hari lalu
+                              </span>
+                              {cust.lastBatch && (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-surface text-slate-text-secondary border border-slate-border font-medium">
+                                  {cust.lastBatch}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-text-muted mt-0.5">
+                              <span>{cust.maskedPhone}</span>
+                              <span>•</span>
+                              <span>{cust.city}</span>
+                              <span>•</span>
+                              {cust.acceptsMarketing ? (
+                                <span className="text-channel-whatsapp-text font-semibold flex items-center gap-1">
+                                  <Check className="w-3 h-3 text-channel-whatsapp-base" />
+                                  Opt-in Aktif
+                                </span>
+                              ) : (
+                                <span className="text-slate-text-muted italic">
+                                  Opt-out (PDP Protected)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action per Customer */}
+                        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                          {cust.acceptsMarketing ? (
+                            <a
+                              href={waUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-channel-whatsapp-surface hover:bg-channel-whatsapp-base hover:text-white text-channel-whatsapp-text font-bold text-xs border border-channel-whatsapp-base/30 transition-all cursor-pointer"
+                              title={`Kirim pesan WhatsApp langsung ke ${cust.fullName}`}
+                            >
+                              <Send className="w-3 h-3" />
+                              <span>Kirim Chat WA</span>
+                            </a>
+                          ) : (
+                            <span className="text-[10px] px-2 py-1 rounded bg-slate-border text-slate-text-muted font-medium">
+                              Tidak Diizinkan
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-border bg-slate-surface flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span className="text-[11px] text-slate-text-muted">
+                Diproses dengan identitas PIC aktif untuk Audit Log.
+              </span>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsDormantModalOpen(false)}
+                  className="px-4 py-2 rounded-lg bg-slate-card hover:bg-slate-border border border-slate-border text-slate-text-primary text-xs font-semibold cursor-pointer"
+                >
+                  Tutup
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExecuteBatchPromo}
+                  disabled={isDispatchingBatch || dormantList.filter((c) => c.acceptsMarketing).length === 0}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-channel-whatsapp-base hover:bg-channel-whatsapp-text text-white text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  {isDispatchingBatch ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Menyiarkan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>
+                        Kirim Siaran ke Semua ({dormantList.filter((c) => c.acceptsMarketing).length}) &amp; Catat Log
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

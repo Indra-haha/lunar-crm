@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { connectToDatabase, db } from '@/lib/db';
 import { leads, supportTickets, customerFeedbacks, orders, customers, messageLogs } from '@/lib/schema';
-import { eq, desc, isNotNull, sql } from 'drizzle-orm';
+import { eq, desc, isNotNull, sql, inArray } from 'drizzle-orm';
 import { getSession } from '@/lib/auth';
+import { maskPhone } from '@/lib/formatters';
 
 export const dynamic = 'force-dynamic';
 
@@ -146,11 +147,73 @@ export async function GET() {
       { day: 'Min', frt: 7.9, target: 15 },
     ];
 
+    // 5. Query Real Dormant Customers (>60 days inactive) from Database
+    const dormantList = await db
+      .select({
+        id: customers.id,
+        customerId: customers.customerId,
+        fullName: customers.fullName,
+        socialHandle: customers.socialHandle,
+        phone: customers.phone,
+        city: customers.city,
+        acceptsMarketing: customers.acceptsMarketing,
+        segment: customers.segment,
+        createdAt: customers.createdAt,
+      })
+      .from(customers)
+      .where(eq(customers.segment, 'DORMANT'))
+      .orderBy(desc(customers.createdAt));
+
+    const dormantIds = dormantList.map((c) => c.id);
+    let pastOrders: Array<{ customerId: string; batchName: string; createdAt: Date }> = [];
+    if (dormantIds.length > 0) {
+      pastOrders = await db
+        .select({
+          customerId: orders.customerId,
+          batchName: orders.batchName,
+          createdAt: orders.createdAt,
+        })
+        .from(orders)
+        .where(inArray(orders.customerId, dormantIds))
+        .orderBy(desc(orders.createdAt));
+    }
+
+    const latestOrderByCust = new Map<string, { batchName: string; createdAt: Date }>();
+    for (const ord of pastOrders) {
+      if (!latestOrderByCust.has(ord.customerId)) {
+        latestOrderByCust.set(ord.customerId, ord);
+      }
+    }
+
+    const nowTime = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+
+    const dormantCustomers = dormantList.map((c) => {
+      const lastOrd = latestOrderByCust.get(c.id);
+      const refDate = lastOrd ? new Date(lastOrd.createdAt) : new Date(c.createdAt);
+      const daysInactive = Math.max(1, Math.floor((nowTime - refDate.getTime()) / dayMs));
+
+      return {
+        id: c.id,
+        customerId: c.customerId,
+        fullName: c.fullName,
+        socialHandle: c.socialHandle,
+        rawPhone: c.phone,
+        maskedPhone: maskPhone(c.phone),
+        city: c.city || 'Jakarta',
+        acceptsMarketing: c.acceptsMarketing,
+        daysInactive,
+        lastBatch: lastOrd?.batchName || 'Batch #10 Archive',
+        lastOrderDate: refDate.toISOString(),
+      };
+    });
+
     return NextResponse.json({
       kpis,
       complaintCategories: categoryCount,
       feedbacks,
       weeklyFRT,
+      dormantCustomers,
     });
   } catch (err) {
     console.error('API GET /api/dashboard error:', err);
@@ -161,18 +224,25 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getSession();
-    if (!session || session.role !== 'SUPER_ADMIN') {
+    if (!session) {
       return NextResponse.json(
-        { error: 'Akses ditolak. Fitur siaran promo dan penyematan testimoni hanya dapat dilakukan oleh Super Admin.' },
-        { status: 403 }
+        { error: 'Akses ditolak. Silakan masuk terlebih dahulu.' },
+        { status: 401 }
       );
     }
 
     await connectToDatabase();
     const data = await request.json();
 
-    // 1. Toggle Pin Feedback for social media
+    // 1. Toggle Pin Feedback for social media (Super Admin only)
     if (data.action === 'toggle_pin') {
+      if (session.role !== 'SUPER_ADMIN') {
+        return NextResponse.json(
+          { error: 'Akses ditolak. Fitur penyematan testimoni hanya untuk Super Admin.' },
+          { status: 403 }
+        );
+      }
+
       const { feedbackId } = data;
       const [current] = await db
         .select({ isPinnedForSocial: customerFeedbacks.isPinnedForSocial })
@@ -201,7 +271,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, isPinnedForSocial: !current.isPinnedForSocial });
     }
 
-    // 2. Schedule Promo Broadcast
+    // 2. Schedule Promo Broadcast / Send to Dormant Customers (>60 Hari)
     if (data.action === 'schedule_promo' || data.action === 'send_promo_dormant') {
       const { promoTemplate, scheduleOption, batchName, scheduledDate } = data;
 
@@ -212,16 +282,21 @@ export async function POST(request: Request) {
 
       const eligibleRecipients = dormantCustomers.filter((c) => c.acceptsMarketing);
 
-      for (const cust of eligibleRecipients.slice(0, 5)) {
+      const defaultTemplate =
+        'Halo {nama}! Khusus kamu pelanggan setia Lunarchivve, dapatkan diskon 15% untuk Pre-Order Batch #12 merchandise terbaru! Balas pesan ini untuk klaim voucher diskon kamu ya ✨';
+
+      const templateToUse = promoTemplate || defaultTemplate;
+
+      for (const cust of eligibleRecipients) {
         await db.insert(messageLogs).values({
           recipientName: cust.fullName,
           recipientPhone: cust.phone,
           channel: 'WHATSAPP',
           templateKey: 'BROADCAST_PO',
-          templateTitle: 'Broadcast Re-engagement Dormant Customer',
-          messageContent: (promoTemplate || 'Promo Pre-Order Batch #12 diskon 15%').replace(/{nama}/g, cust.fullName),
+          templateTitle: 'Broadcast Re-engagement Dormant Customer (>60 Hari)',
+          messageContent: templateToUse.replace(/{nama}/g, cust.fullName),
           status: 'SENT',
-          dispatchedBy: 'Admin Studio',
+          dispatchedBy: session.fullName || 'Admin Studio',
           referenceType: 'PROMO_DORMANT',
         });
       }
@@ -247,13 +322,15 @@ export async function POST(request: Request) {
           ? 'pada pembukaan Batch #13 mendatang'
           : scheduleOption === 'CUSTOM'
           ? `pada tanggal ${formattedCustomDate}`
-          : 'segera hari ini';
+          : 'hari ini';
 
       return NextResponse.json({
         success: true,
         eligibleCount: eligibleRecipients.length,
+        totalDormant: dormantCustomers.length,
+        dispatchedBy: session.fullName || 'Admin Studio',
         scheduledDate: scheduledDate || null,
-        message: `Siaran pesan WhatsApp ke ${eligibleRecipients.length} pelanggan pasif (izin marketing aktif) berhasil dijadwalkan ${scheduleLabel}.`,
+        message: `Siaran pesan WhatsApp ke ${eligibleRecipients.length} pelanggan pasif (izin marketing aktif) berhasil disiarkan & dicatat ke Audit Log oleh ${session.fullName || 'Admin Studio'} (${scheduleLabel}).`,
       });
     }
 

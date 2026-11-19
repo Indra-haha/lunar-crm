@@ -278,7 +278,7 @@ export default function PublicOrderClient({ products }: PublicOrderClientProps) 
             {/* Action Buttons */}
             <div className="max-w-md mx-auto flex flex-col sm:flex-row gap-3">
               <a
-                href={`https://wa.me/6281298448821?text=${encodeURIComponent(
+                href={`https://wa.me/6287722427044?text=${encodeURIComponent(
                   `Halo Admin Lunarchivve! Saya baru saja melakukan pre-order dengan Kode Pesanan: ${submittedOrder.orderCode} (${submittedOrder.productName} - ${submittedOrder.variantName}, Qty: ${submittedOrder.quantity} pcs). Mohon konfirmasi rekening/pembayarannya ya.`
                 )}`}
                 target="_blank"
