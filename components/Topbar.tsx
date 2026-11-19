@@ -23,7 +23,11 @@ import type { SystemNotification } from '@/app/actions/notifications';
 import type { SessionPayload } from '@/lib/auth';
 import { formatRupiah } from '@/lib/formatters';
 
-export default function Topbar() {
+interface TopbarProps {
+  initialUser?: SessionPayload | null;
+}
+
+export default function Topbar({ initialUser }: TopbarProps = {}) {
   const router = useRouter();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -39,7 +43,7 @@ export default function Topbar() {
 
   // User Profile modal state
   const [profileOpen, setProfileOpen] = useState(false);
-  const [adminUser, setAdminUser] = useState<SessionPayload | null>(null);
+  const [adminUser, setAdminUser] = useState<SessionPayload | null>(initialUser || null);
 
   const [, startTransition] = useTransition();
 
@@ -52,13 +56,15 @@ export default function Topbar() {
       })
       .catch((err) => console.error(err));
 
-    fetch('/api/auth')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.admin) setAdminUser(data.admin);
-      })
-      .catch((err) => console.error(err));
-  }, []);
+    if (!initialUser) {
+      fetch('/api/auth')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.admin) setAdminUser(data.admin);
+        })
+        .catch((err) => console.error(err));
+    }
+  }, [initialUser]);
 
   // Listen to Cmd+K / Ctrl+K keyboard shortcut
   useEffect(() => {

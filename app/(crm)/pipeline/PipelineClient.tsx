@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition, useMemo } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   Kanban,
   AlertTriangle,
@@ -24,6 +25,7 @@ import {
   Eye,
   Send,
   Phone,
+  ShieldAlert,
 } from 'lucide-react';
 import Image from 'next/image';
 import type {
@@ -72,6 +74,9 @@ const STAGES: Array<{ key: PipelineStatus; label: string; desc: string; dotColor
 ];
 
 export default function PipelineClient({ initialBoard, customersList }: PipelineClientProps) {
+  const searchParams = useSearchParams();
+  const noticeParam = searchParams.get('notice');
+  const [showNotice, setShowNotice] = useState(Boolean(noticeParam));
   const [board, setBoard] = useState<PipelineBoardData>(initialBoard);
   const [batchFilter, setBatchFilter] = useState('ALL');
   const [kanbanSearch, setKanbanSearch] = useState('');
@@ -327,6 +332,25 @@ export default function PipelineClient({ initialBoard, customersList }: Pipeline
             </button>
           </div>
         </div>
+
+        {/* Role Restriction Banner if redirected */}
+        {showNotice && (noticeParam === 'products_admin_only' || noticeParam === 'restricted_role') && (
+          <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs font-semibold text-amber-800 flex items-center justify-between animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                <strong>Akses Dibatasi:</strong> Modul Master Katalog &amp; Harga Produk merupakan wewenang khusus <strong>Super Admin</strong>. Anda diarahkan ke papan operasional pipeline.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowNotice(false)}
+              className="text-amber-800 hover:text-amber-950 font-bold ml-3 cursor-pointer px-2 py-0.5"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* 4 Quick Metrics Bento Bar */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">

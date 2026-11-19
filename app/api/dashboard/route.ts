@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { connectToDatabase, db } from '@/lib/db';
 import { leads, supportTickets, customerFeedbacks, orders, customers, messageLogs } from '@/lib/schema';
 import { eq, desc, isNotNull, sql } from 'drizzle-orm';
+import { getSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -159,6 +160,14 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession();
+    if (!session || session.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Akses ditolak. Fitur siaran promo dan penyematan testimoni hanya dapat dilakukan oleh Super Admin.' },
+        { status: 403 }
+      );
+    }
+
     await connectToDatabase();
     const data = await request.json();
 

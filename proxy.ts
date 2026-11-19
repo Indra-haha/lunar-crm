@@ -4,11 +4,21 @@ import type { NextRequest } from 'next/server';
 const SESSION_COOKIE_NAME = 'lunar_session';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'lunarchivve-secret-key-studio-crm-2026-secure-token';
 
-async function isValidSession(token: string | undefined): Promise<boolean> {
-  if (!token || !token.includes('.')) return false;
+interface SessionPayload {
+  adminId: string;
+  email: string;
+  username: string;
+  role: string;
+  fullName: string;
+  avatarUrl?: string;
+  exp: number;
+}
+
+async function verifySessionToken(token: string | undefined): Promise<SessionPayload | null> {
+  if (!token || !token.includes('.')) return null;
   try {
     const [encodedPayload, signatureHex] = token.split('.');
-    if (!encodedPayload || !signatureHex) return false;
+    if (!encodedPayload || !signatureHex) return null;
 
     const enc = new TextEncoder();
     const key = await crypto.subtle.importKey(
@@ -20,7 +30,7 @@ async function isValidSession(token: string | undefined): Promise<boolean> {
     );
 
     const matches = signatureHex.match(/.{1,2}/g);
-    if (!matches) return false;
+    if (!matches) return null;
     const signatureBytes = new Uint8Array(matches.map((b) => parseInt(b, 16)));
 
     const valid = await crypto.subtle.verify(
@@ -29,20 +39,20 @@ async function isValidSession(token: string | undefined): Promise<boolean> {
       signatureBytes,
       enc.encode(encodedPayload)
     );
-    if (!valid) return false;
+    if (!valid) return null;
 
     // Decode base64url payload
     const base64 = encodedPayload.replace(/-/g, '+').replace(/_/g, '/');
     const jsonStr = atob(base64);
-    const payload = JSON.parse(jsonStr);
+    const payload = JSON.parse(jsonStr) as SessionPayload;
 
     if (Date.now() > payload.exp) {
-      return false;
+      return null;
     }
 
-    return true;
+    return payload;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -84,11 +94,13 @@ function createSafeRedirectUrl(pathname: string, request: NextRequest, searchPar
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  const isAuth = await isValidSession(sessionToken);
+  const session = await verifySessionToken(sessionToken);
+  const isAuth = !!session;
+  const isSuperAdmin = session?.role === 'SUPER_ADMIN';
 
-  // If user is at root '/', route based on auth status
+  // If user is at root '/', route based on auth status and role
   if (pathname === '/') {
-    const target = isAuth ? '/dashboard' : '/login';
+    const target = isAuth ? (isSuperAdmin ? '/dashboard' : '/pipeline') : '/login';
     return NextResponse.redirect(createSafeRedirectUrl(target, request));
   }
 
@@ -110,8 +122,9 @@ export async function proxy(request: NextRequest) {
   // If user is accessing /login
   if (pathname === '/login') {
     if (isAuth) {
-      // Already logged in, go to dashboard
-      return NextResponse.redirect(createSafeRedirectUrl('/dashboard', request));
+      // Already logged in, redirect to respective home workspace
+      const target = isSuperAdmin ? '/dashboard' : '/pipeline';
+      return NextResponse.redirect(createSafeRedirectUrl(target, request));
     }
     // Allow login page access
     return NextResponse.next();
@@ -131,6 +144,11 @@ export async function proxy(request: NextRequest) {
       ? `${pathname}${request.nextUrl.search}`
       : pathname;
     return NextResponse.redirect(createSafeRedirectUrl('/login', request, { redirect: redirectTarget }));
+  }
+
+  // Role Restriction: /products is strictly reserved for Super Admin (Catalog & Price Master)
+  if (isAuth && pathname.startsWith('/products') && !isSuperAdmin) {
+    return NextResponse.redirect(createSafeRedirectUrl('/pipeline', request, { notice: 'products_admin_only' }));
   }
 
   return NextResponse.next();

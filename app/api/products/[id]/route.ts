@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { connectToDatabase, db } from '@/lib/db';
 import { products } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
+import { getSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,14 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getSession();
+    if (!session || session.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Akses ditolak. Pengubahan master produk hanya diizinkan untuk Super Admin.' },
+        { status: 403 }
+      );
+    }
+
     await connectToDatabase();
     const { id } = await params;
     const data = await request.json();
@@ -110,6 +119,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getSession();
+    if (!session || session.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Akses ditolak. Penghapusan master produk hanya diizinkan untuk Super Admin.' },
+        { status: 403 }
+      );
+    }
+
     await connectToDatabase();
     const { id } = await params;
 

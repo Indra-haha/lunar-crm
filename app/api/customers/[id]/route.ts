@@ -4,6 +4,7 @@ import { connectToDatabase, db } from '@/lib/db';
 import { customers, orders, supportTickets, AcquisitionChannel, CustomerSegment } from '@/lib/schema';
 import { eq, desc, inArray } from 'drizzle-orm';
 import { maskPhone } from '@/lib/formatters';
+import { getSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -150,6 +151,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getSession();
+    if (!session || session.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Akses ditolak. Penghapusan data pelanggan hanya dapat dilakukan oleh Super Admin.' },
+        { status: 403 }
+      );
+    }
+
     await connectToDatabase();
     const { id } = await params;
 

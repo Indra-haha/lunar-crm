@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -19,8 +19,19 @@ import {
   LogOut,
   Package,
 } from 'lucide-react';
+import type { SessionPayload } from '@/lib/auth';
 
-const navigationItems = [
+interface SidebarProps {
+  user?: SessionPayload | null;
+}
+
+const adminNavigationItems = [
+  {
+    name: 'Dashboard KPI & CSAT',
+    href: '/dashboard',
+    icon: BarChart3,
+    badge: 'KPI',
+  },
   {
     name: 'Master Produk & Varian',
     href: '/products',
@@ -51,6 +62,33 @@ const navigationItems = [
     icon: MessageSquare,
     badge: 'FRT',
   },
+];
+
+const staffNavigationItems = [
+  {
+    name: 'Pesanan & Pipeline',
+    href: '/pipeline',
+    icon: Kanban,
+    badge: '5 Tahap',
+  },
+  {
+    name: 'Tiket Keluhan & QA',
+    href: '/support',
+    icon: ShieldCheck,
+    badge: 'QC',
+  },
+  {
+    name: 'Leads & Template WA',
+    href: '/leads',
+    icon: MessageSquare,
+    badge: 'FRT',
+  },
+  {
+    name: 'Database Pelanggan',
+    href: '/customers',
+    icon: Users,
+    badge: 'PDP',
+  },
   {
     name: 'Dashboard KPI & CSAT',
     href: '/dashboard',
@@ -59,9 +97,26 @@ const navigationItems = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const [helpOpen, setHelpOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<SessionPayload | null>(user || null);
+
+  useEffect(() => {
+    if (user) {
+      setCurrentUser(user);
+    } else {
+      fetch('/api/auth')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.admin) setCurrentUser(data.admin);
+        })
+        .catch((err) => console.error(err));
+    }
+  }, [user]);
+
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+  const navigationItems = isSuperAdmin ? adminNavigationItems : staffNavigationItems;
 
   return (
     <>
@@ -87,10 +142,37 @@ export default function Sidebar() {
             </div>
           </div>
 
+          {/* Role Status Tag */}
+          <div className="px-4 pt-3 pb-1">
+            <div className={`px-2.5 py-1.5 rounded-lg border flex items-center justify-between text-xs ${
+              isSuperAdmin
+                ? 'bg-primary/5 border-primary/20 text-primary'
+                : 'bg-secondary/5 border-secondary/20 text-secondary'
+            }`}>
+              <div className="flex items-center gap-1.5">
+                {isSuperAdmin ? (
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                ) : (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-secondary" />
+                )}
+                <span className="font-bold text-[11px]">
+                  {isSuperAdmin ? 'Super Admin' : 'Studio Staff'}
+                </span>
+              </div>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                isSuperAdmin
+                  ? 'bg-primary/10 text-primary'
+                  : 'bg-secondary/10 text-secondary'
+              }`}>
+                {isSuperAdmin ? 'Studio Lead' : 'PIC Operasional'}
+              </span>
+            </div>
+          </div>
+
           {/* Menu Navigation */}
-          <div className="px-3 pt-5">
+          <div className="px-3 pt-3">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-text-muted px-3 mb-2">
-              Menu Utama
+              {isSuperAdmin ? 'Menu Utama (Lead)' : 'Alur Operasional Harian'}
             </p>
             <nav className="flex flex-col gap-1">
               {navigationItems.map((item) => {

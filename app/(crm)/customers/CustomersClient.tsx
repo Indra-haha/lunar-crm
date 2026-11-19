@@ -31,6 +31,7 @@ import { formatRupiah, formatRelativeTime } from '@/lib/formatters';
 
 interface CustomersClientProps {
   initialCustomers: CustomerListItem[];
+  userRole?: string;
 }
 
 interface CustomerDetailData {
@@ -78,7 +79,8 @@ interface CustomerDetailData {
   }>;
 }
 
-export default function CustomersClient({ initialCustomers }: CustomersClientProps) {
+export default function CustomersClient({ initialCustomers, userRole }: CustomersClientProps) {
+  const isSuperAdmin = userRole === 'SUPER_ADMIN';
   const searchParams = useSearchParams();
   const paramId = searchParams.get('id');
 
@@ -193,6 +195,10 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
 
   // Real CSV Export File Generation & Download (UU PDP Compliant)
   const handleExportCSV = () => {
+    if (!isSuperAdmin) {
+      alert('Akses Dibatasi: Ekspor basis data pelanggan hanya dapat diunduh oleh akun Super Admin sesuai kepatuhan UU PDP No. 27/2022.');
+      return;
+    }
     const headers = [
       'ID Pelanggan',
       'Nama Lengkap',
@@ -399,6 +405,10 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
 
   // Delete customer
   const handleDeleteCustomer = async (id: string, name: string) => {
+    if (!isSuperAdmin) {
+      alert('Akses Dibatasi: Penghapusan basis data pelanggan hanya dapat dilakukan oleh Super Admin.');
+      return;
+    }
     if (!confirm(`Hapus pelanggan ${name}? Seluruh data terkait akan dihapus.`)) return;
     await fetch(`/api/customers/${id}`, { method: 'DELETE' });
     setCustomers((prev) => prev.filter((c) => c.id !== id));
@@ -653,11 +663,21 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
             <button
               type="button"
               onClick={handleExportCSV}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-surface hover:bg-surface-container text-slate-text-primary rounded-lg text-xs font-semibold border border-slate-border transition-colors cursor-pointer"
-              title="Unduh berkas CSV resmi dengan penyamaran nomor UU PDP"
+              disabled={!isSuperAdmin}
+              title={isSuperAdmin ? "Unduh berkas CSV resmi dengan penyamaran nomor UU PDP" : "Ekspor CSV dibatasi hanya untuk Super Admin (UU PDP)"}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                isSuperAdmin
+                  ? 'bg-slate-surface hover:bg-surface-container text-slate-text-primary border-slate-border cursor-pointer'
+                  : 'bg-slate-surface/50 text-slate-text-muted border-slate-border/60 cursor-not-allowed opacity-60'
+              }`}
             >
               <Download className="w-3.5 h-3.5 text-slate-text-secondary" />
               <span>Export CSV</span>
+              {!isSuperAdmin && (
+                <span className="text-[10px] px-1 py-0.5 rounded bg-slate-border text-slate-text-muted font-normal">
+                  Admin Only
+                </span>
+              )}
             </button>
 
             {/* Add Customer Button */}
@@ -790,17 +810,19 @@ export default function CustomersClient({ initialCustomers }: CustomersClientPro
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteCustomer(cust.id, cust.fullName);
-                              }}
-                              className="p-1 rounded text-slate-text-muted hover:text-status-danger-base hover:bg-status-danger-surface transition-colors cursor-pointer"
-                              title="Hapus"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            {isSuperAdmin && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteCustomer(cust.id, cust.fullName);
+                                }}
+                                className="p-1 rounded text-slate-text-muted hover:text-status-danger-base hover:bg-status-danger-surface transition-colors cursor-pointer"
+                                title="Hapus Pelanggan (Super Admin)"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

@@ -73,8 +73,13 @@ function LoginForm() {
         }
 
         setIsSuccess(true);
+        // Direct Super Admin to /dashboard, and Studio Staff to operational /pipeline by default
+        let target = redirectUrl;
+        if (!searchParams.get('redirect')) {
+          target = result.admin?.role === 'SUPER_ADMIN' ? '/dashboard' : '/pipeline';
+        }
         // Full navigation ensures the newly set lunar_session cookie is sent in HTTP headers
-        window.location.href = redirectUrl;
+        window.location.href = target;
       } catch (err) {
         console.error('Login error:', err);
         setErrorMessage('Terjadi gangguan jaringan atau server. Coba beberapa saat lagi.');

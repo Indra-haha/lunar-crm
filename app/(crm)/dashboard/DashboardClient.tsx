@@ -21,6 +21,7 @@ import {
   Check,
   Zap,
   Calendar,
+  Lock,
 } from 'lucide-react';
 import type {
   KPIMetrics,
@@ -39,9 +40,11 @@ interface DashboardClientProps {
     feedbacks: FeedbackItem[];
     weeklyFRT: Array<{ day: string; frt: number; target: number }>;
   };
+  userRole?: string;
 }
 
-export default function DashboardClient({ initialData }: DashboardClientProps) {
+export default function DashboardClient({ initialData, userRole }: DashboardClientProps) {
+  const isSuperAdmin = userRole === 'SUPER_ADMIN';
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(initialData.feedbacks);
   const [feedbackFilter, setFeedbackFilter] = useState<'all' | 'five_star' | 'pinned'>('all');
   const [isPending, startTransition] = useTransition();
@@ -51,6 +54,11 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
   // Toggle Pin Feedback
   const handleTogglePin = (feedbackId: string) => {
+    if (!isSuperAdmin) {
+      alert('Akses Dibatasi: Hanya Super Admin (Studio Lead) yang berwenang menyematkan ulasan untuk materi media sosial.');
+      return;
+    }
+
     setFeedbacks((prev) =>
       prev.map((f) =>
         f.id === feedbackId ? { ...f, isPinnedForSocial: !f.isPinnedForSocial } : f
@@ -84,6 +92,11 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const [isScheduling, startSchedule] = useTransition();
 
   const handleSchedulePromo = () => {
+    if (!isSuperAdmin) {
+      alert('Akses Dibatasi: Penjadwalan siaran promo hanya dapat dilakukan oleh Super Admin.');
+      return;
+    }
+
     startSchedule(async () => {
       try {
         const response = await fetch('/api/dashboard', {
@@ -106,6 +119,11 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   };
 
   const handleSendPromoDormant = () => {
+    if (!isSuperAdmin) {
+      alert('Akses Dibatasi: Pengiriman promo hanya dapat dilakukan oleh Super Admin.');
+      return;
+    }
+
     startTransition(async () => {
       try {
         const response = await fetch('/api/dashboard', {
@@ -489,6 +507,20 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             </span>
           </div>
 
+          {!isSuperAdmin && (
+            <div className="p-3 bg-slate-surface rounded-xl border border-slate-border flex items-center justify-between text-xs text-slate-text-muted">
+              <div className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-slate-text-muted shrink-0" />
+                <span>
+                  <strong>Mode Peninjauan Operasional:</strong> Fitur penentuan jadwal dan eksekusi siaran promo hanya dapat dilakukan oleh akun <strong>Super Admin (Studio Lead)</strong>.
+                </span>
+              </div>
+              <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-slate-border text-slate-text-secondary whitespace-nowrap">
+                Khusus Admin
+              </span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left 7 Cols: Scheduler Form */}
             <div className="lg:col-span-7 flex flex-col gap-4 text-xs">
@@ -610,8 +642,13 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 <button
                   type="button"
                   onClick={handleSchedulePromo}
-                  disabled={isScheduling}
-                  className="px-5 py-2.5 bg-primary-container hover:bg-secondary text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                  disabled={isScheduling || !isSuperAdmin}
+                  title={!isSuperAdmin ? 'Hanya Super Admin yang berwenang mengeksekusi siaran promo' : undefined}
+                  className={`px-5 py-2.5 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 ${
+                    isSuperAdmin
+                      ? 'bg-primary-container hover:bg-secondary text-white cursor-pointer'
+                      : 'bg-slate-surface border border-slate-border text-slate-text-muted cursor-not-allowed opacity-60'
+                  }`}
                 >
                   {isScheduling ? (
                     <>
@@ -620,8 +657,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                     </>
                   ) : (
                     <>
-                      <Send className="w-3.5 h-3.5" />
-                      <span>Jadwalkan &amp; Eksekusi Siaran</span>
+                      {isSuperAdmin ? <Send className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                      <span>{isSuperAdmin ? 'Jadwalkan & Eksekusi Siaran' : 'Terkunci (Super Admin)'}</span>
                     </>
                   )}
                 </button>
@@ -838,11 +875,17 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                     </span>
                   </div>
 
-                  <label className="relative inline-flex items-center cursor-pointer">
+                  <label
+                    className={`relative inline-flex items-center ${
+                      isSuperAdmin ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+                    }`}
+                    title={!isSuperAdmin ? 'Hanya Super Admin yang berwenang menyematkan ulasan untuk materi medsos' : undefined}
+                  >
                     <input
                       type="checkbox"
                       checked={f.isPinnedForSocial}
                       onChange={() => handleTogglePin(f.id)}
+                      disabled={!isSuperAdmin}
                       className="sr-only peer"
                     />
                     <div className="w-8 h-4 bg-slate-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary-container" />

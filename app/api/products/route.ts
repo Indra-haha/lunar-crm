@@ -4,6 +4,7 @@ import { connectToDatabase, db } from '@/lib/db';
 import { products, ProductCategory, IProductVariant } from '@/lib/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { getNextProductCode } from '@/lib/idGenerators';
+import { getSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,6 +63,14 @@ export async function GET(request?: Request) {
 
 export async function POST(request: Request) {
   try {
+    const session = await getSession();
+    if (!session || session.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Akses ditolak. Penambahan master produk hanya diizinkan untuk Super Admin.' },
+        { status: 403 }
+      );
+    }
+
     await connectToDatabase();
     const data = await request.json();
 
